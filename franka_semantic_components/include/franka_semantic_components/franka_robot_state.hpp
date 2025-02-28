@@ -22,6 +22,8 @@
 
 #include "franka/robot_state.h"
 #include "franka_msgs/msg/franka_robot_state.hpp"
+
+#include "controller_interface/controller_interface.hpp"
 #include "semantic_components/semantic_component_interface.hpp"
 
 namespace franka_semantic_components {

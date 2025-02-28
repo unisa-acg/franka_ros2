@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "controller_interface/helpers.hpp"
+#include "controller_interface/controller_interface.hpp"
 #include "hardware_interface/loaned_command_interface.hpp"
 #include "hardware_interface/loaned_state_interface.hpp"
 

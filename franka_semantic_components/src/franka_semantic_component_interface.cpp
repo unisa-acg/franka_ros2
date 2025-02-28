@@ -17,6 +17,8 @@
 
 #include "franka_semantic_components/franka_semantic_component_interface.hpp"
 
+#include "controller_interface/helpers.hpp"
+
 namespace franka_semantic_components {
 
 FrankaSemanticComponentInterface::FrankaSemanticComponentInterface(const std::string& name,
