@@ -115,9 +115,6 @@ void RobotCommunicationThread::run() {
   realtime_tools::configure_sched_fifo(99);
 
   using namespace std::chrono_literals;
-  // auto const period = std::chrono::nanoseconds(1'000'000'000 / 1000);
-  auto const period = std::chrono::nanoseconds(200'000);
-
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
   std::chrono::steady_clock::time_point old_now = now;
   double measured_period = std::chrono::duration<double>(now - old_now).count();
