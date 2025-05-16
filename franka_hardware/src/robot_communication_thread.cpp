@@ -74,17 +74,14 @@ void RobotCommunicationThread::write() {
   // state mutex is needed for reading the current command mode
   std::lock_guard<std::mutex> command_lock(command_mutex_), state_lock(robot_state_mutex_);
 
-  if (hasInfinite(async_hw_position_commands_) || hasInfinite(async_hw_effort_commands_) ||
-      hasInfinite(async_hw_velocity_commands_) || hasInfinite(async_hw_cartesian_velocities_) ||
-      hasInfinite(async_hw_elbow_command_) || hasInfinite(async_hw_cartesian_pose_)) {
-    return;
-  }
-
-  if (current_robot_command_mode_ == RobotCommandMode::EFFORT) {
+  if (current_robot_command_mode_ == RobotCommandMode::EFFORT &&
+      !hasInfinite(async_hw_effort_commands_)) {
     robot_->writeOnce(async_hw_effort_commands_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY) {
+  } else if (current_robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY && 
+             !hasInfinite(async_hw_velocity_commands_)) {
     robot_->writeOnce(async_hw_velocity_commands_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY) {
+  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY &&
+             !hasInfinite(async_hw_cartesian_velocities_)) {
     robot_->writeOnce(async_hw_cartesian_velocities_);
   }
 
@@ -95,18 +92,25 @@ void RobotCommunicationThread::write() {
     return;
   }
 
-  if (current_robot_command_mode_ == RobotCommandMode::JOINT_POSITION) {
+  if (current_robot_command_mode_ == RobotCommandMode::JOINT_POSITION &&
+      !hasInfinite(async_hw_position_commands_) && !hasInfinite(async_hw_velocity_commands_)) {
     // TODO: Implement the control strategy for joint and cartesian position commands
-    // std::array<double, N_JOINTS> joint_position_command_;
-    // for (size_t i = 0; i < N_JOINTS; ++i) {
-    //   joint_position_command_[i] = current_robot_state_.q_d[i] + async_hw_velocity_commands_[i] * 0.001 + 
-    // }
-    robot_->writeOnce(async_hw_position_commands_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE) {
+    std::array<double, N_JOINTS> joint_position_command_;
+    for (size_t i = 0; i < N_JOINTS; ++i) {
+      joint_position_command_[i] =
+          current_robot_state_.q_d[i] + async_hw_velocity_commands_[i] * 0.001 +
+          (async_hw_position_commands_[i] - current_robot_state_.q_d[i]) * 1e-3;
+    }
+    robot_->writeOnce(joint_position_command_);
+  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE &&
+             !hasInfinite(async_hw_cartesian_pose_)) {
     robot_->writeOnce(async_hw_cartesian_pose_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY_WITH_ELBOW) {
+  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY_WITH_ELBOW &&
+             !hasInfinite(async_hw_cartesian_velocities_) &&
+             !hasInfinite(async_hw_elbow_command_)) {
     robot_->writeOnce(async_hw_cartesian_velocities_, async_hw_elbow_command_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE_WITH_ELBOW) {
+  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE_WITH_ELBOW &&
+             !hasInfinite(async_hw_cartesian_pose_) && !hasInfinite(async_hw_elbow_command_)) {
     robot_->writeOnce(async_hw_cartesian_pose_, async_hw_elbow_command_);
   }
 }

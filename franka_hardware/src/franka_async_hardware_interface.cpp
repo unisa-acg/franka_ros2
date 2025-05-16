@@ -58,6 +58,7 @@ void FrankaAsyncHardwareInterface::initialize_command_interfaces(
   }
   if (robot_command_mode_ == RobotCommandMode::JOINT_POSITION) {
     hw_position_commands_ = robot_state.q_d;
+    last_hw_position_commands_ = robot_state.q_d;
   }
   if (robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY) {
     hw_velocity_commands_.fill(0.0);
@@ -119,6 +120,14 @@ hardware_interface::return_type FrankaAsyncHardwareInterface::read(const rclcpp:
 hardware_interface::return_type FrankaAsyncHardwareInterface::write(
     const rclcpp::Time&,
     const rclcpp::Duration& duration) {
+  if (robot_command_mode_ == RobotCommandMode::JOINT_POSITION) {
+    for (size_t i = 0; i < N_JOINTS; ++i) {
+      hw_velocity_commands_[i] =
+          (hw_position_commands_[i] - last_hw_position_commands_[i]) / duration.seconds();
+    }
+  }
+
+  last_hw_position_commands_ = hw_position_commands_;
   robot_communication_thread_->write_commands(hw_effort_commands_, hw_position_commands_,
                                               hw_velocity_commands_, hw_cartesian_pose_,
                                               hw_cartesian_velocities_, hw_elbow_command_);

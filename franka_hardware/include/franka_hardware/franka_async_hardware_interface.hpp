@@ -42,6 +42,8 @@ class FrankaAsyncHardwareInterface : public FrankaHardwareInterface {
   hardware_interface::return_type write(const rclcpp::Time& time,
                                         const rclcpp::Duration& period) override;
 
+  static constexpr int N_JOINTS = 7;
+
  private:
   std::shared_ptr<RobotCommunicationThread> robot_communication_thread_;
 
@@ -49,7 +51,22 @@ class FrankaAsyncHardwareInterface : public FrankaHardwareInterface {
   const rclcpp::Duration empty_period_ = rclcpp::Duration(0, 0);
   const std::vector<std::string> empty_string_vector_ = {};
 
-  RobotCommandMode robot_command_mode_{RobotCommandMode::IDLE}, last_robot_command_mode_{RobotCommandMode::IDLE};
+  RobotCommandMode robot_command_mode_{RobotCommandMode::IDLE},
+      last_robot_command_mode_{RobotCommandMode::IDLE};
+
+  std::array<double, kNumberOfJoints> last_hw_position_commands_{
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN()};
+
+  std::array<double, kNumberOfJoints> last_last_hw_position_commands_{
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN()};
+
+  rclcpp::Duration last_duration_ = rclcpp::Duration::from_seconds(0.001);
 
   void initialize_command_interfaces(const franka::RobotState& robot_state);
   void set_initial_state_interfaces(const franka::RobotState& robot_state);
