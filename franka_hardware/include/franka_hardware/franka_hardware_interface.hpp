@@ -92,17 +92,45 @@ class FrankaHardwareInterface : public hardware_interface::SystemInterface {
   std::shared_ptr<FrankaExecutor> executor_;
 
   // Torque joint commands for the effort command interface
-  std::array<double, kNumberOfJoints> hw_effort_commands_{0, 0, 0, 0, 0, 0, 0};
+  std::array<double, kNumberOfJoints> hw_effort_commands_{
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN()};
   // Position joint commands for the position command interface
-  std::array<double, kNumberOfJoints> hw_position_commands_{0, 0, 0, 0, 0, 0, 0};
+  std::array<double, kNumberOfJoints> hw_position_commands_{
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN()};
   // Velocity joint commands for the position command interface
-  std::array<double, kNumberOfJoints> hw_velocity_commands_{0, 0, 0, 0, 0, 0, 0};
+  std::array<double, kNumberOfJoints> hw_velocity_commands_{
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN()};
 
   // Robot joint states
-  std::array<double, kNumberOfJoints> hw_positions_{0, 0, 0, 0, 0, 0, 0};
-  std::array<double, kNumberOfJoints> hw_velocities_{0, 0, 0, 0, 0, 0, 0};
-  std::array<double, kNumberOfJoints> hw_efforts_{0, 0, 0, 0, 0, 0, 0};
-  std::array<double, kNumberOfJoints> initial_joint_positions_{0, 0, 0, 0, 0, 0, 0};
+  std::array<double, kNumberOfJoints> hw_positions_{
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN()};
+  std::array<double, kNumberOfJoints> hw_velocities_{
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN()};
+  std::array<double, kNumberOfJoints> hw_efforts_{
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN()};
+  std::array<double, kNumberOfJoints> initial_joint_positions_{
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+    std::numeric_limits<double>::quiet_NaN()};
   // Cartesian States
   std::array<double, 16> initial_robot_pose_{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
   std::array<double, 2> initial_elbow_state_{0, 0};
