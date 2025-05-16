@@ -112,7 +112,7 @@ void RobotCommunicationThread::write() {
 }
 
 void RobotCommunicationThread::run() {
-  realtime_tools::configure_sched_fifo(70);
+  realtime_tools::configure_sched_fifo(99);
 
   using namespace std::chrono_literals;
   // auto const period = std::chrono::nanoseconds(1'000'000'000 / 1000);
