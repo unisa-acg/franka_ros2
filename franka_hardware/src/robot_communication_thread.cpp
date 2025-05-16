@@ -161,9 +161,8 @@ void RobotCommunicationThread::disable() {
   robot_->stopRobot();
 }
 
-void RobotCommunicationThread::get_current_robot_state(
-    franka::RobotState& robot_state,
-    RobotCommandMode& robot_command_mode) {
+void RobotCommunicationThread::get_current_robot_state(franka::RobotState& robot_state,
+                                                       RobotCommandMode& robot_command_mode) {
   std::lock_guard<std::mutex> lock(robot_state_mutex_);
   robot_state = current_robot_state_;
   robot_command_mode = current_robot_command_mode_;
