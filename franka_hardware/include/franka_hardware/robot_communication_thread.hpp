@@ -112,7 +112,7 @@ class RobotCommunicationThread : public std::thread {
   std::shared_ptr<Robot> robot_;
   const rclcpp::Logger logger_;
 
-  static constexpr double communication_period_error_tolerance_ = 5e-4; //0.5 ms
+  static constexpr double communication_period_error_tolerance_ = 25e-5; //0.25 ms
 };
 
 }  // namespace franka_hardware
