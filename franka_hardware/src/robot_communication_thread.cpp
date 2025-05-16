@@ -121,20 +121,29 @@ void RobotCommunicationThread::run() {
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
   std::chrono::steady_clock::time_point old_now = now;
   double measured_period = std::chrono::duration<double>(now - old_now).count();
+  bool should_ignore_packet = false;
   // std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>
   // next_iteration_time{now};
   int i = 0;
   while (true) {
-    now = std::chrono::steady_clock::now();
-    measured_period = std::chrono::duration<double>(now - old_now).count();
-    if (fabs(measured_period - 1e-3) > communication_period_error_tolerance_) {
-      RCLCPP_WARN(logger_, "Anomalous communication period detected: %.6f s", measured_period);
-    }
-    old_now = now;
     if (is_enabled_) {
       read();
+
+      should_ignore_packet = false;
+      now = std::chrono::steady_clock::now();
+      measured_period = std::chrono::duration<double>(now - old_now).count();
+      old_now = now;
+      if (fabs(measured_period - 1e-3) > communication_period_error_tolerance_) {
+        RCLCPP_WARN(logger_, "Anomalous communication period detected: %.6f s. Ignoring packet.",
+                    measured_period);
+        should_ignore_packet = true;
+      }
+
       perform_command_mode_switch();
-      write();
+
+      if (!should_ignore_packet) {
+        write();
+      }
       i++;
     }
   }
