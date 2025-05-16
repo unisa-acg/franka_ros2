@@ -63,7 +63,7 @@ class FrankaHardwareInterface : public hardware_interface::SystemInterface {
   CallbackReturn on_init(const hardware_interface::HardwareInfo& info) override;
   static const size_t kNumberOfJoints = 7;
 
- private:
+ protected:
   struct InterfaceInfo {
     std::string interface_type;
     size_t size;
@@ -71,6 +71,12 @@ class FrankaHardwareInterface : public hardware_interface::SystemInterface {
   };
 
   void initializePositionCommands(const franka::RobotState& robot_state);
+
+  template <typename CommandType>
+  bool hasInfinite(const CommandType& commands) {
+    return std::any_of(commands.begin(), commands.end(),
+                       [](double command) { return !std::isfinite(command); });
+  }
 
   // Initialize joint position commands in the first pass
   bool first_elbow_update_{true};

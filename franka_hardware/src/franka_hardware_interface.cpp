@@ -180,12 +180,6 @@ hardware_interface::return_type FrankaHardwareInterface::read(const rclcpp::Time
   return hardware_interface::return_type::OK;
 }
 
-template <typename CommandType>
-bool hasInfinite(const CommandType& commands) {
-  return std::any_of(commands.begin(), commands.end(),
-                     [](double command) { return !std::isfinite(command); });
-}
-
 hardware_interface::return_type FrankaHardwareInterface::write(const rclcpp::Time& /*time*/,
                                                                const rclcpp::Duration& /*period*/) {
   if (hasInfinite(hw_position_commands_) || hasInfinite(hw_effort_commands_) ||
