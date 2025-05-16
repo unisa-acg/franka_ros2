@@ -254,7 +254,6 @@ class Robot {
  protected:
   Robot() = default;
 
- private:
   /**
    * Get the current robot state, when the controller is active
    * @return current robot state.
