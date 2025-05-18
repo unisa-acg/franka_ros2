@@ -60,12 +60,6 @@ class FrankaAsyncHardwareInterface : public FrankaHardwareInterface {
       std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
       std::numeric_limits<double>::quiet_NaN()};
 
-  std::array<double, kNumberOfJoints> last_last_hw_position_commands_{
-      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
-      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
-      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
-      std::numeric_limits<double>::quiet_NaN()};
-
   rclcpp::Duration last_duration_ = rclcpp::Duration::from_seconds(0.001);
 
   void initialize_command_interfaces(const franka::RobotState& robot_state);
