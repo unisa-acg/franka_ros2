@@ -111,13 +111,13 @@ void RobotCommunicationThread::write() {
 
   if (should_write_joint_position_commands) {
     // TODO: Implement the control strategy for joint and cartesian position commands
-    std::array<double, N_JOINTS> joint_position_command_;
+    std::array<double, N_JOINTS> joint_position_command;
     for (size_t i = 0; i < N_JOINTS; ++i) {
-      joint_position_command_[i] =
+      joint_position_command[i] =
           current_robot_state_.q_d[i] + async_hw_velocity_commands_[i] * 0.001 +
           (async_hw_position_commands_[i] - current_robot_state_.q_d[i]) * 1e-3;
     }
-    robot_->writeOnce(joint_position_command_);
+    robot_->writeOnce(joint_position_command);
   } else if (should_write_cartesian_pose_commands) {
     const Eigen::Map<const Eigen::Matrix<double, 4, 4, Eigen::ColMajor>> current_cartesian_pose(
         current_robot_state_.O_T_EE_d.data());
