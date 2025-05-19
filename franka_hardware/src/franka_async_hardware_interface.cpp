@@ -13,8 +13,8 @@
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <rclcpp/macros.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include "realtime_tools/realtime_helpers.hpp"
 #include "franka_hardware/utils.hpp"
+#include "realtime_tools/realtime_helpers.hpp"
 
 #include "franka_hardware/franka_async_hardware_interface.hpp"
 
@@ -135,7 +135,7 @@ hardware_interface::return_type FrankaAsyncHardwareInterface::write(
     const Eigen::Map<const Eigen::Matrix<double, 4, 4, Eigen::ColMajor>> hw_cartesian_pose(
         hw_cartesian_pose_.data());
     Eigen::Map<Eigen::Matrix<double, 6, 1>> cartesian_twist(hw_cartesian_velocities_.data());
-    
+
     compute_twist(last_cartesian_pose, hw_cartesian_pose, cartesian_twist, duration.seconds());
   }
 
