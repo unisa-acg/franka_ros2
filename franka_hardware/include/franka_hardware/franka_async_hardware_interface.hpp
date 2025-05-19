@@ -59,6 +59,17 @@ class FrankaAsyncHardwareInterface : public FrankaHardwareInterface {
       std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
       std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
       std::numeric_limits<double>::quiet_NaN()};
+  
+  // Cartesian poses are represented as a column-major homogeneous transformation matrix.
+  std::array<double, 16> last_hw_cartesian_pose_{ std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<double>::quiet_NaN()};
 
   rclcpp::Duration last_duration_ = rclcpp::Duration::from_seconds(0.001);
 

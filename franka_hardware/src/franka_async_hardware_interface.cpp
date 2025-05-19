@@ -4,6 +4,8 @@
 #include <exception>
 
 #include <franka/exception.h>
+#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <hardware_interface/handle.hpp>
 #include <hardware_interface/hardware_info.hpp>
 #include <hardware_interface/system_interface.hpp>
@@ -12,6 +14,7 @@
 #include <rclcpp/macros.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include "realtime_tools/realtime_helpers.hpp"
+#include "franka_hardware/utils.hpp"
 
 #include "franka_hardware/franka_async_hardware_interface.hpp"
 
@@ -66,6 +69,7 @@ void FrankaAsyncHardwareInterface::initialize_command_interfaces(
   if (robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE ||
       robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE_WITH_ELBOW) {
     hw_cartesian_pose_ = robot_state.O_T_EE_d;
+    last_hw_cartesian_pose_ = robot_state.O_T_EE_d;
   }
   if (robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY ||
       robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY_WITH_ELBOW) {
@@ -97,7 +101,6 @@ void FrankaAsyncHardwareInterface::set_initial_state_interfaces(
       robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY_WITH_ELBOW) {
     initial_elbow_state_ = robot_state.elbow_c;
   }
-
 }
 
 hardware_interface::return_type FrankaAsyncHardwareInterface::read(const rclcpp::Time&,
@@ -125,9 +128,19 @@ hardware_interface::return_type FrankaAsyncHardwareInterface::write(
       hw_velocity_commands_[i] =
           (hw_position_commands_[i] - last_hw_position_commands_[i]) / duration.seconds();
     }
+  } else if (robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE ||
+             robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE_WITH_ELBOW) {
+    const Eigen::Map<const Eigen::Matrix<double, 4, 4, Eigen::ColMajor>> last_cartesian_pose(
+        last_hw_cartesian_pose_.data());
+    const Eigen::Map<const Eigen::Matrix<double, 4, 4, Eigen::ColMajor>> hw_cartesian_pose(
+        hw_cartesian_pose_.data());
+    Eigen::Map<Eigen::Matrix<double, 6, 1>> cartesian_twist(hw_cartesian_velocities_.data());
+    
+    compute_twist(last_cartesian_pose, hw_cartesian_pose, cartesian_twist, duration.seconds());
   }
 
   last_hw_position_commands_ = hw_position_commands_;
+  last_hw_cartesian_pose_ = hw_cartesian_pose_;
   robot_communication_thread_->write_commands(hw_effort_commands_, hw_position_commands_,
                                               hw_velocity_commands_, hw_cartesian_pose_,
                                               hw_cartesian_velocities_, hw_elbow_command_);

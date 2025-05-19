@@ -4,7 +4,10 @@
 #include <franka/control_tools.h>
 #include <franka/rate_limiting.h>
 #include <research_interface/robot/rbk_types.h>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
 #include <rclcpp/logging.hpp>
+#include "franka_hardware/utils.hpp"
 
 #include "realtime_tools/realtime_helpers.hpp"
 
@@ -77,7 +80,7 @@ void RobotCommunicationThread::write() {
   if (current_robot_command_mode_ == RobotCommandMode::EFFORT &&
       !hasInfinite(async_hw_effort_commands_)) {
     robot_->writeOnce(async_hw_effort_commands_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY && 
+  } else if (current_robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY &&
              !hasInfinite(async_hw_velocity_commands_)) {
     robot_->writeOnce(async_hw_velocity_commands_);
   } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY &&
@@ -92,8 +95,21 @@ void RobotCommunicationThread::write() {
     return;
   }
 
-  if (current_robot_command_mode_ == RobotCommandMode::JOINT_POSITION &&
-      !hasInfinite(async_hw_position_commands_) && !hasInfinite(async_hw_velocity_commands_)) {
+  const bool should_write_joint_position_commands =
+      current_robot_command_mode_ == RobotCommandMode::JOINT_POSITION &&
+      !hasInfinite(async_hw_position_commands_) && !hasInfinite(async_hw_velocity_commands_);
+
+  const bool should_write_cartesian_pose_commands =
+      !hasInfinite(async_hw_cartesian_pose_) &&
+      (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE ||
+       (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE_WITH_ELBOW &&
+        !hasInfinite(async_hw_elbow_command_)));
+
+  const bool should_write_cartesian_velocity_elbow_commands =
+      current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY_WITH_ELBOW &&
+      !hasInfinite(async_hw_cartesian_velocities_) && !hasInfinite(async_hw_elbow_command_);
+
+  if (should_write_joint_position_commands) {
     // TODO: Implement the control strategy for joint and cartesian position commands
     std::array<double, N_JOINTS> joint_position_command_;
     for (size_t i = 0; i < N_JOINTS; ++i) {
@@ -102,16 +118,42 @@ void RobotCommunicationThread::write() {
           (async_hw_position_commands_[i] - current_robot_state_.q_d[i]) * 1e-3;
     }
     robot_->writeOnce(joint_position_command_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE &&
-             !hasInfinite(async_hw_cartesian_pose_)) {
-    robot_->writeOnce(async_hw_cartesian_pose_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY_WITH_ELBOW &&
-             !hasInfinite(async_hw_cartesian_velocities_) &&
-             !hasInfinite(async_hw_elbow_command_)) {
+  } else if (should_write_cartesian_pose_commands) {
+    const Eigen::Map<const Eigen::Matrix<double, 4, 4, Eigen::ColMajor>> current_cartesian_pose(
+        current_robot_state_.O_T_EE_d.data());
+    const Eigen::Map<const Eigen::Matrix<double, 4, 4, Eigen::ColMajor>> desired_cartesian_pose(
+        async_hw_cartesian_pose_.data());
+    const Eigen::Map<const Eigen::Matrix<double, 6, 1>> desired_cartesian_twist(
+        async_hw_cartesian_velocities_.data());
+
+    Eigen::Matrix<double, 4, 4, Eigen::ColMajor> cartesian_pose_reference = current_cartesian_pose;
+
+    // Apply the desired twist to the reference pose
+    Eigen::Matrix<double, 4, 4, Eigen::ColMajor> delta_pose;
+    calculate_delta_pose(desired_cartesian_twist, 0.001, delta_pose);
+    cartesian_pose_reference *= delta_pose;
+
+    // Calculate the twist between the desired and current poses
+    Eigen::Matrix<double, 6, 1> cartesian_twist;
+    compute_twist(current_cartesian_pose, cartesian_pose_reference, cartesian_twist, 1.0);
+
+    // Apply the twist to the reference pose
+    calculate_delta_pose(cartesian_twist, 0.003, delta_pose);
+    cartesian_pose_reference *= delta_pose;
+
+    // Convert cartesian pose reference to std::array format
+    std::array<double, DIM_CARTESIAN_POSE> cartesian_pose_command;
+    for (size_t i = 0; i < 16; ++i) {
+      cartesian_pose_command[i] = cartesian_pose_reference.data()[i];
+    }
+
+    if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE_WITH_ELBOW) {
+      robot_->writeOnce(cartesian_pose_command, async_hw_elbow_command_);
+    } else {
+      robot_->writeOnce(cartesian_pose_command);
+    }
+  } else if (should_write_cartesian_velocity_elbow_commands) {
     robot_->writeOnce(async_hw_cartesian_velocities_, async_hw_elbow_command_);
-  } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_POSE_WITH_ELBOW &&
-             !hasInfinite(async_hw_cartesian_pose_) && !hasInfinite(async_hw_elbow_command_)) {
-    robot_->writeOnce(async_hw_cartesian_pose_, async_hw_elbow_command_);
   }
 }
 
