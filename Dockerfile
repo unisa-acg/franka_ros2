@@ -1,73 +1,94 @@
-FROM ros:humble
+# Start with an official ROS 2 base image for the desired distribution
+FROM ros:humble-ros-base
 
-ARG DEBIAN_FRONTEND=noninteractive
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    ROS_DISTRO=humble
 
 ARG USER_UID=1001
 ARG USER_GID=1001
 ARG USERNAME=user
 
-WORKDIR /tmp
-
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    #
-    # [Optional] Add sudo support. Omit if you don't need to install software after connecting.
-    && apt-get update \
-    && apt-get install -y sudo \
-    && echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME
-
-RUN apt-get update -y && apt-get install -y --allow-unauthenticated \
-    clang-14 \
-    clang-format-14 \
-    clang-tidy-14 \
-    libeigen3-dev \
-    libignition-gazebo6-dev \
-    libpoco-dev \
-    python3-pip \
-    ros-humble-ament-clang-format \
-    ros-humble-ament-cmake-clang-format \
-    ros-humble-ament-cmake-clang-tidy \
-    ros-humble-ament-flake8 \
-    ros-humble-angles \
-    ros-humble-control-msgs \
-    ros-humble-control-toolbox \
-    ros-humble-controller-interface \
-    ros-humble-controller-manager \
-    ros-humble-generate-parameter-library \
-    ros-humble-hardware-interface \
-    ros-humble-hardware-interface-testing \
-    ros-humble-launch-testing \
-    ros-humble-moveit \
-    ros-humble-pinocchio \
-    ros-humble-realtime-tools \
-    ros-humble-ros2-control \
-    ros-humble-ros2-control-test-assets \
-    ros-humble-xacro \
+# Install essential packages and ROS development tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        bash-completion \
+        curl \
+        gdb \
+        git \
+        nano \
+        openssh-client \
+        python3-colcon-argcomplete \
+        python3-colcon-common-extensions \
+        sudo \
+        vim \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install -U \
-    argcomplete \
-    flake8-blind-except \
-    flake8-builtins \
-    flake8-class-newline \
-    flake8-comprehensions \
-    flake8-deprecated \
-    flake8-docstrings \
-    flake8-import-order \
-    flake8-quotes
-
-RUN mkdir ~/source_code    
-RUN cd ~/source_code && git clone https://github.com/frankaemika/libfranka.git \
-    && cd libfranka \
-    && git checkout 0.13.3 \
-    && git submodule init \
-    && git submodule update \
-    && mkdir build && cd build \
-    && cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF  .. \
-    && make franka -j$(nproc) \
-    && cpack -G DEB \
-    && sudo dpkg -i libfranka*.deb
-
-# set the default user to the newly created user
+# Setup user configuration
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
+    && echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /home/$USERNAME/.bashrc \
+    && echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> /home/$USERNAME/.bashrc
+    
 USER $USERNAME
+
+# Install some ROS 2 dependencies to create a cache layer
+RUN sudo apt-get update \
+    && sudo apt-get install -y --no-install-recommends \
+        ros-humble-ros-gz \
+        ros-humble-sdformat-urdf \
+        ros-humble-joint-state-publisher-gui \
+        ros-humble-ros2controlcli \
+        ros-humble-controller-interface \
+        ros-humble-hardware-interface-testing \
+        ros-humble-ament-cmake-clang-format \
+        ros-humble-ament-cmake-clang-tidy \
+        ros-humble-controller-manager \
+        ros-humble-ros2-control-test-assets \
+        libignition-gazebo6-dev \
+        libignition-plugin-dev \
+        ros-humble-hardware-interface \
+        ros-humble-control-msgs \
+        ros-humble-backward-ros \
+        ros-humble-generate-parameter-library \
+        ros-humble-realtime-tools \
+        ros-humble-joint-state-publisher \
+        ros-humble-joint-state-broadcaster \
+        ros-humble-moveit-ros-move-group \
+        ros-humble-moveit-kinematics \
+        ros-humble-moveit-planners-ompl \
+        ros-humble-moveit-ros-visualization \
+        ros-humble-joint-trajectory-controller \
+        ros-humble-moveit-simple-controller-manager \
+        ros-humble-rviz2 \
+        ros-humble-xacro \
+    && sudo apt-get clean \
+    && sudo rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ros2_ws
+
+# Install the missing ROS 2 dependencies
+COPY . /ros2_ws/src
+RUN sudo chown -R $USERNAME:$USERNAME /ros2_ws \
+    && vcs import src < src/franka.repos --recursive --skip-existing \
+    && sudo apt-get update \
+    && rosdep update \
+    && rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y \
+    && sudo apt-get clean \
+    && sudo rm -rf /var/lib/apt/lists/* \
+    && rm -rf /home/$USERNAME/.ros \
+    && rm -rf src \
+    && mkdir -p src
+
+COPY ./franka_entrypoint.sh /franka_entrypoint.sh
+RUN sudo chmod +x /franka_entrypoint.sh
+
+# Set the default shell to bash and the workdir to the source directory
+SHELL [ "/bin/bash", "-c" ]
+ENTRYPOINT [ "/franka_entrypoint.sh" ]
+CMD [ "/bin/bash" ]
+WORKDIR /ros2_ws

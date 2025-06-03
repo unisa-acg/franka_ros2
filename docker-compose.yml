@@ -1,8 +1,11 @@
-version: '3'
-
 services:
-  ros2_control:
-    build: .
+  franka_ros2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - USER_UID=${USER_UID}
+        - USER_GID=${USER_GID}
     container_name: franka_ros2
     network_mode: "host"
     privileged: true
@@ -10,15 +13,13 @@ services:
     tty: true
     stdin_open: true
     volumes:
-      - ../:/workspaces
+      - ./:/ros2_ws/src
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - $XAUTHORITY:$XAUTHORITY
       - ./limits.conf:/etc/security/limits.conf
-      - ~/.gitconfig:/etc/gitconfig:ro
+      - /dev:/dev
     environment:
       QT_X11_NO_MITSHM: 1
       DISPLAY: $DISPLAY
-    user: $UID:$UID
     cap_add:
       - SYS_NICE
     ulimits:

@@ -1,3 +1,4 @@
+.env
 .idea
 .vscode
 *.pyc
@@ -7,3 +8,5 @@ cmake-build-*/
 build/
 install/
 log/
+libfranka
+franka_description

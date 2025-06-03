@@ -24,10 +24,11 @@ find_package(rclcpp_components REQUIRED)
 
 add_library(franka_hardware SHARED
         src/franka_action_server.cpp
-        src/franka_hardware_interface.cpp
-        src/robot.cpp
-        src/franka_param_service_server.cpp
         src/franka_executor.cpp
+        src/franka_hardware_interface.cpp
+        src/franka_param_service_server.cpp
+        src/robot.cpp
+        src/ros_libfranka_logger.cpp
 )
 
 target_include_directories(
@@ -81,7 +82,7 @@ if(BUILD_TESTING)
     if(CHECK_TIDY)
         find_package(ament_cmake_clang_tidy REQUIRED)
         set(ament_cmake_clang_tidy_CONFIG_FILE ../.clang-tidy)
-        ament_clang_tidy(${CMAKE_BINARY_DIR})
+        ament_clang_tidy(${CMAKE_BINARY_DIR} --jobs 6)
     endif()
 endif()
 
