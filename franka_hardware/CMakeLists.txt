@@ -22,6 +22,7 @@ find_package(pluginlib REQUIRED)
 find_package(Franka 0.9.3 REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(realtime_tools REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 add_library(franka_hardware SHARED
         src/franka_action_server.cpp
@@ -37,6 +38,7 @@ target_include_directories(
         franka_hardware
         PRIVATE
         include
+        ${EIGEN3_INCLUDE_DIRS}
 )
 
 ament_target_dependencies(
