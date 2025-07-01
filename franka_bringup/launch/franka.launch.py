@@ -71,7 +71,7 @@ def robot_description_dependent_nodes_spawner(
         franka_controllers = PathJoinSubstitution(
             [FindPackageShare('franka_bringup'), 'config', 'controllers.yaml'])
 
-    return [
+    nodes_to_spawn = [
         Node(
             package='robot_state_publisher',
             executable='robot_state_publisher',
@@ -92,7 +92,20 @@ def robot_description_dependent_nodes_spawner(
                 'stderr': 'screen',
             },
             on_exit=Shutdown(),
-        )]
+        )
+    ]
+    
+    if LaunchConfiguration('initial_joint_controller').perform(context):
+        nodes_to_spawn.append(
+            Node(
+                package='controller_manager',
+                executable='spawner',
+                arguments=[LaunchConfiguration('initial_joint_controller')],
+                output='screen',
+            )
+        )
+    
+    return nodes_to_spawn
 
 
 def generate_launch_description():
@@ -157,6 +170,12 @@ def generate_launch_description():
             'controller_file_path',
             default_value='config/controllers.yaml',
             description='Relative path to the controller config file inside the package.'
+        ),
+        DeclareLaunchArgument(
+            "initial_joint_controller",
+            default_value="",
+            description="Initially loaded robot controller. The controller has to be defined in the "
+            "controllers file.",
         ),
         Node(
             package='joint_state_publisher',
