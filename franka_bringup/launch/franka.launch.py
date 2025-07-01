@@ -59,8 +59,17 @@ def robot_description_dependent_nodes_spawner(
                                                'fake_sensor_commands': fake_sensor_commands_str,
                                            }).toprettyxml(indent='  ')
 
-    franka_controllers = PathJoinSubstitution(
-        [FindPackageShare('franka_bringup'), 'config', 'controllers.yaml'])
+    controller_file_package = LaunchConfiguration('controller_file_package')
+    controller_file_path = LaunchConfiguration('controller_file_path')
+
+    # Default to original file if controller_file_path is empty
+    controller_file_path_str = context.perform_substitution(controller_file_path)
+    if controller_file_path_str:
+        franka_controllers = PathJoinSubstitution(
+            [FindPackageShare(controller_file_package), controller_file_path])
+    else:
+        franka_controllers = PathJoinSubstitution(
+            [FindPackageShare('franka_bringup'), 'config', 'controllers.yaml'])
 
     return [
         Node(
@@ -139,6 +148,16 @@ def generate_launch_description():
             default_value='true',
             description='Use Franka Gripper as an end-effector, otherwise, the robot is loaded '
                         'without an end-effector.'),
+        DeclareLaunchArgument(
+            'controller_file_package',
+            default_value='franka_bringup',
+            description='Package name where the controller config file is located.'
+        ),
+        DeclareLaunchArgument(
+            'controller_file_path',
+            default_value='config/controllers.yaml',
+            description='Relative path to the controller config file inside the package.'
+        ),
         Node(
             package='joint_state_publisher',
             executable='joint_state_publisher',
