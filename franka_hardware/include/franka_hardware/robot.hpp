@@ -312,7 +312,7 @@ class Robot {
   bool cartesian_pose_interface_active_{false};
 
   bool torque_command_rate_limiter_active_{true};
-  bool velocity_command_rate_limit_active_{false};
+  bool velocity_command_rate_limit_active_{true};
 
   bool cartesian_velocity_command_rate_limit_active_{true};
   bool cartesian_velocity_low_pass_filter_active_{false};
