@@ -28,6 +28,7 @@
 #include <rclcpp/logger.hpp>
 
 #include "franka_hardware/robot.hpp"
+#include "franka_hardware/iir_filter.hpp"
 
 namespace franka_hardware {
 
@@ -66,11 +67,15 @@ class RobotCommunicationThread : public std::thread {
   void enable();
   void disable();
 
+  void set_filter_commands(bool should_filter);
+
  private:
   void run();
   void read();
   void write();
   void perform_command_mode_switch();
+
+  void filter_commands(std::chrono::steady_clock::time_point now);
 
   template <typename CommandType>
   bool hasInfinite(const CommandType& commands) {
@@ -84,6 +89,8 @@ class RobotCommunicationThread : public std::thread {
   std::array<double, N_JOINTS> async_hw_position_commands_{0, 0, 0, 0, 0, 0, 0};
   // Velocity joint commands for the position command interface
   std::array<double, N_JOINTS> async_hw_velocity_commands_{0, 0, 0, 0, 0, 0, 0};
+  // Filtered velocity commands for the joint velocity command interface
+  std::array<double, N_JOINTS> filtered_velocity_commands_{0, 0, 0, 0, 0, 0, 0};
   // Cartesian commands
   std::array<double, DIM_CARTESIAN_VELOCITIES> async_hw_cartesian_velocities_{0, 0, 0, 0, 0, 0};
   std::array<double, DIM_CARTESIAN_POSE> async_hw_cartesian_pose_{1, 0, 0, 0, 0, 1, 0, 0,
@@ -113,6 +120,10 @@ class RobotCommunicationThread : public std::thread {
   const rclcpp::Logger logger_;
 
   static constexpr double communication_period_error_tolerance_ = 25e-5; //0.25 ms
+
+  std::vector<acg_signal_processing::IIRFilter<7, 0>> iir_filters_;
+
+  bool should_filter_ = false;
 };
 
 }  // namespace franka_hardware

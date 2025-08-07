@@ -15,6 +15,15 @@
 
 namespace franka_hardware {
 
+RobotCommunicationThread::RobotCommunicationThread(std::shared_ptr<Robot> robot)
+    : std::thread(&RobotCommunicationThread::run, this), robot_(robot), logger_(rclcpp::get_logger("RobotCommunicationThread")) 
+{
+  iir_filters_.reserve(N_JOINTS);
+  for (int i = 0; i < N_JOINTS; ++i) {
+    iir_filters_.emplace_back(std::array<double, 8>{1./8, 1./8, 1./8, 1./8, 1./8, 1./8, 1./8, 1./8}, std::array<double, 0>{});
+  }
+}
+
 void RobotCommunicationThread::request_command_mode_switch(RobotCommandMode robot_command_mode) {
   std::lock_guard<std::mutex> lock(robot_state_mutex_);
   next_robot_command_mode_ = robot_command_mode;
@@ -37,6 +46,7 @@ void RobotCommunicationThread::perform_command_mode_switch() {
     robot_->initializeJointPositionInterface();
   } else if (current_robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY) {
     async_hw_velocity_commands_.fill(0.0);
+    filtered_velocity_commands_.fill(0.0);
     robot_->initializeJointVelocityInterface();
   } else if (current_robot_command_mode_ == RobotCommandMode::EFFORT) {
     async_hw_effort_commands_.fill(0.0);
@@ -73,6 +83,38 @@ void RobotCommunicationThread::read() {
   }
 }
 
+void RobotCommunicationThread::filter_commands(std::chrono::steady_clock::time_point now) {
+  if(current_robot_command_mode_ != RobotCommandMode::JOINT_VELOCITY) {
+    return; // Filtering is only applied for joint velocity commands
+  }
+
+  // Ensure the command mutex is locked to prevent concurrent access
+  std::lock_guard<std::mutex> lock(command_mutex_);
+
+  // Get the current time in seconds
+  acg_signal_processing::Timestamp current_time = std::chrono::duration<double>(now.time_since_epoch()).count();
+
+  // Update IIR filters for each joint velocity command
+  for (size_t i = 0; i < N_JOINTS; ++i) {
+    acg_signal_processing::StampedDataPoint<1> sample;
+    sample.timestamp = current_time;
+    sample.data[0] = async_hw_velocity_commands_[i];
+    iir_filters_[i].add_sample(sample);
+  }
+
+  // Apply the IIR filter to each joint velocity command
+  for (size_t i = 0; i < N_JOINTS; ++i) {
+    if (iir_filters_[i].is_ready()) {
+      acg_signal_processing::DataPoint<1> filtered_sample = iir_filters_[i].sample(current_time);
+      filtered_velocity_commands_[i] = filtered_sample[0];
+    }
+    else
+    {
+      iir_filters_[i].set_filter_state(async_hw_velocity_commands_[i]);
+    }
+  }
+}
+
 void RobotCommunicationThread::write() {
   // state mutex is needed for reading the current command mode
   std::lock_guard<std::mutex> command_lock(command_mutex_), state_lock(robot_state_mutex_);
@@ -82,7 +124,12 @@ void RobotCommunicationThread::write() {
     robot_->writeOnce(async_hw_effort_commands_);
   } else if (current_robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY &&
              !hasInfinite(async_hw_velocity_commands_)) {
-    robot_->writeOnce(async_hw_velocity_commands_);
+    if(should_filter_ && !hasInfinite(filtered_velocity_commands_)) {
+      robot_->writeOnce(filtered_velocity_commands_);
+    }
+    else if (!hasInfinite(async_hw_velocity_commands_)) {
+      robot_->writeOnce(async_hw_velocity_commands_);
+    }
   } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY &&
              !hasInfinite(async_hw_cartesian_velocities_)) {
     robot_->writeOnce(async_hw_cartesian_velocities_);
@@ -165,11 +212,14 @@ void RobotCommunicationThread::run() {
   std::chrono::steady_clock::time_point old_now = now;
   double measured_period = std::chrono::duration<double>(now - old_now).count();
   bool should_ignore_packet = false;
-  // std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>
-  // next_iteration_time{now};
   int i = 0;
   while (true) {
     if (is_enabled_) {
+      if(should_filter_) {
+        // Apply filters to the joint commands
+        filter_commands(now);
+      }
+
       read();
 
       should_ignore_packet = false;
@@ -193,6 +243,10 @@ void RobotCommunicationThread::run() {
 }
 
 // ------ PUBLIC MEMBER FUNCTIONS ------
+
+void RobotCommunicationThread::set_filter_commands(bool should_filter) {
+    should_filter_ = should_filter;
+  }
 
 void RobotCommunicationThread::enable() {
   is_enabled_ = true;
