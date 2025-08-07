@@ -33,8 +33,20 @@ CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::H
     return CallbackReturn::ERROR;
   }
 
+  // Read the filter_commands parameter from the hardware parameters
+  bool filter_commands = false;
+  if (auto param_value = info.hardware_parameters.find("filter_commands"); param_value != info.hardware_parameters.end())
+  {
+    std::string value_lower = param_value->second;
+    std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
+    filter_commands = (value_lower == "true");
+  }
+
   // Initialize the robot communication thread
   robot_communication_thread_ = std::make_shared<RobotCommunicationThread>(robot_);
+
+  // Set the filter commands flag
+  robot_communication_thread_->set_filter_commands(filter_commands);
   // TODO: Wait for the robot state to be available
   return CallbackReturn::SUCCESS;
 }
