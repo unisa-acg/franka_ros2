@@ -50,8 +50,7 @@ class RobotCommunicationThread : public std::thread {
   static constexpr int DIM_CARTESIAN_VELOCITIES = 6;
   static constexpr int DIM_ELBOW_COMMANDS = 2;
 
-  RobotCommunicationThread(std::shared_ptr<Robot> robot)
-      : std::thread(&RobotCommunicationThread::run, this), robot_(robot), logger_(rclcpp::get_logger("RobotCommunicationThread")) {}
+  RobotCommunicationThread(std::shared_ptr<Robot> robot);
 
   franka_hardware::Model* get_model();
 
