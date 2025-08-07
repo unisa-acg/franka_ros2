@@ -313,6 +313,7 @@ class Robot {
 
   bool torque_command_rate_limiter_active_{true};
   bool velocity_command_rate_limit_active_{true};
+  bool joint_velocity_command_low_pass_filter_active_{false};
 
   bool cartesian_velocity_command_rate_limit_active_{true};
   bool cartesian_velocity_low_pass_filter_active_{false};
