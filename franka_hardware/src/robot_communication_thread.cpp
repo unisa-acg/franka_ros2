@@ -1,6 +1,8 @@
 #include <cassert>
+#include <filesystem>
 #include <mutex>
 
+#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <franka/control_tools.h>
 #include <franka/rate_limiting.h>
 #include <research_interface/robot/rbk_types.h>
@@ -16,12 +18,43 @@
 namespace franka_hardware {
 
 RobotCommunicationThread::RobotCommunicationThread(std::shared_ptr<Robot> robot)
-    : std::thread(&RobotCommunicationThread::run, this), robot_(robot), logger_(rclcpp::get_logger("RobotCommunicationThread")) 
-{
+    : std::thread(&RobotCommunicationThread::run, this),
+      robot_(robot),
+      logger_(rclcpp::get_logger("RobotCommunicationThread")) {
+
+  // Initialize the filters
   iir_filters_.reserve(N_JOINTS);
   for (int i = 0; i < N_JOINTS; ++i) {
-    iir_filters_.emplace_back(std::array<double, 8>{1./8, 1./8, 1./8, 1./8, 1./8, 1./8, 1./8, 1./8}, std::array<double, 0>{});
+    iir_filters_.emplace_back(
+        std::array<double, 8>{1. / 8, 1. / 8, 1. / 8, 1. / 8, 1. / 8, 1. / 8, 1. / 8, 1. / 8},
+        std::array<double, 0>{});
   }
+
+  // Initialize the command governor
+  temp_franka_robot_state_ = robot_->readOnce();
+
+  // PACKAGE_NAME is defined in CMakeLists.txt
+  std::string share_dir = ament_index_cpp::get_package_share_directory(PACKAGE_NAME);
+  std::filesystem::path data_path = std::filesystem::path(share_dir) / "data";
+  if (!std::filesystem::exists(data_path)) {
+    RCLCPP_ERROR(logger_, "Data folder not found at: %s", data_path.c_str());
+    throw std::runtime_error("Data folder for command governor not found.");
+  }
+
+  std::cout << "Initial robot state read for command governor initialization." << std::endl;
+  Eigen::Vector<double, 7> initial_position;
+  for (int i = 0; i < 7; ++i) {
+    initial_position[i] = temp_franka_robot_state_.q_d[i];
+  }
+  std::cout << "Initial position: " << initial_position.transpose() << std::endl;
+  command_governor_ =
+      std::make_unique<acg_optimal_control::PandaJointCommandGovernor>(data_path.string(), initial_position);
+  std::cout << "Command governor initialized." << std::endl;
+
+  std::array<double, 7> command;
+  command_governor_->update(command, temp_franka_robot_state_.q_d, temp_franka_robot_state_.dq_d,
+                            temp_franka_robot_state_.ddq_d, temp_franka_robot_state_.q_d,
+                            temp_franka_robot_state_.dq_d);
 }
 
 void RobotCommunicationThread::request_command_mode_switch(RobotCommandMode robot_command_mode) {
@@ -84,7 +117,7 @@ void RobotCommunicationThread::read() {
 }
 
 void RobotCommunicationThread::filter_commands(std::chrono::steady_clock::time_point now) {
-  if(current_robot_command_mode_ != RobotCommandMode::JOINT_VELOCITY) {
+  if (current_robot_command_mode_ != RobotCommandMode::JOINT_VELOCITY) {
     return; // Filtering is only applied for joint velocity commands
   }
 
@@ -92,7 +125,8 @@ void RobotCommunicationThread::filter_commands(std::chrono::steady_clock::time_p
   std::lock_guard<std::mutex> lock(command_mutex_);
 
   // Get the current time in seconds
-  acg_signal_processing::Timestamp current_time = std::chrono::duration<double>(now.time_since_epoch()).count();
+  acg_signal_processing::Timestamp current_time =
+      std::chrono::duration<double>(now.time_since_epoch()).count();
 
   // Update IIR filters for each joint velocity command
   for (size_t i = 0; i < N_JOINTS; ++i) {
@@ -107,9 +141,7 @@ void RobotCommunicationThread::filter_commands(std::chrono::steady_clock::time_p
     if (iir_filters_[i].is_ready()) {
       acg_signal_processing::DataPoint<1> filtered_sample = iir_filters_[i].sample(current_time);
       filtered_velocity_commands_[i] = filtered_sample[0];
-    }
-    else
-    {
+    } else {
       iir_filters_[i].set_filter_state(async_hw_velocity_commands_[i]);
     }
   }
@@ -124,10 +156,9 @@ void RobotCommunicationThread::write() {
     robot_->writeOnce(async_hw_effort_commands_);
   } else if (current_robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY &&
              !hasInfinite(async_hw_velocity_commands_)) {
-    if(should_filter_ && !hasInfinite(filtered_velocity_commands_)) {
+    if (should_filter_ && !hasInfinite(filtered_velocity_commands_)) {
       robot_->writeOnce(filtered_velocity_commands_);
-    }
-    else if (!hasInfinite(async_hw_velocity_commands_)) {
+    } else if (!hasInfinite(async_hw_velocity_commands_)) {
       robot_->writeOnce(async_hw_velocity_commands_);
     }
   } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY &&
@@ -157,12 +188,18 @@ void RobotCommunicationThread::write() {
       !hasInfinite(async_hw_cartesian_velocities_) && !hasInfinite(async_hw_elbow_command_);
 
   if (should_write_joint_position_commands) {
-    // TODO: Implement the control strategy for joint and cartesian position commands
     std::array<double, N_JOINTS> joint_position_command;
-    for (size_t i = 0; i < N_JOINTS; ++i) {
-      joint_position_command[i] =
-          current_robot_state_.q_d[i] + async_hw_velocity_commands_[i] * 0.001 +
-          (async_hw_position_commands_[i] - current_robot_state_.q_d[i]) * 1e-3;
+    std::copy(async_hw_position_commands_.begin(),
+              async_hw_position_commands_.end(), joint_position_command.begin());
+    if(is_command_governor_enabled_ && command_governor_){
+      auto now = std::chrono::steady_clock::now();
+      std::array<double, 7> desired_velocity = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+      command_governor_->update(joint_position_command, current_robot_state_.q_d,
+                                current_robot_state_.dq_d, current_robot_state_.ddq_d,
+                                async_hw_position_commands_, desired_velocity);
+      auto now_2 = std::chrono::steady_clock::now();
+      auto measured_period = std::chrono::duration<double>(now_2 - now).count() * 1e3;
+      RCLCPP_DEBUG(logger_, "Computation time for command governor: %.6f ms.", measured_period);
     }
     robot_->writeOnce(joint_position_command);
   } else if (should_write_cartesian_pose_commands) {
@@ -205,7 +242,13 @@ void RobotCommunicationThread::write() {
 }
 
 void RobotCommunicationThread::run() {
-  realtime_tools::configure_sched_fifo(99);
+  realtime_tools::configure_sched_fifo(80);
+
+  // std::vector<int> cpu_ids;
+  // for (int cpu = 17; cpu <= 23; ++cpu) {
+  //   cpu_ids.push_back(cpu);
+  // }
+  // acg_optimal_control::set_thread_affinity(*this, cpu_ids); // pin to CPU 17-23
 
   using namespace std::chrono_literals;
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -215,7 +258,7 @@ void RobotCommunicationThread::run() {
   int i = 0;
   while (true) {
     if (is_enabled_) {
-      if(should_filter_) {
+      if (should_filter_) {
         // Apply filters to the joint commands
         filter_commands(now);
       }
@@ -245,8 +288,12 @@ void RobotCommunicationThread::run() {
 // ------ PUBLIC MEMBER FUNCTIONS ------
 
 void RobotCommunicationThread::set_filter_commands(bool should_filter) {
-    should_filter_ = should_filter;
-  }
+  should_filter_ = should_filter;
+}
+
+void RobotCommunicationThread::set_command_governor(bool enabled) {
+  is_command_governor_enabled_ = enabled;
+}
 
 void RobotCommunicationThread::enable() {
   is_enabled_ = true;
