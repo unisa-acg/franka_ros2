@@ -187,7 +187,7 @@ auto FrankaRobotState::get_values_as_message(franka_msgs::msg::FrankaRobotState&
     return false;
   }
 
-  // Update the time stamps of the data
+  // Update the timestamps of the data
   translation::updateTimeStamps(message.header.stamp, message);
 
   // Collision and contact indicators

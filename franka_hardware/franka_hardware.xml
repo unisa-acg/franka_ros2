@@ -7,4 +7,13 @@
             Hardware interface for Franka Robotics research robots
         </description>
     </class>
+
+    <class name="franka_hardware/FrankaAsyncHardwareInterface"
+           type="franka_hardware::FrankaAsyncHardwareInterface"
+           base_class_type="hardware_interface::SystemInterface">
+
+        <description>
+            Async Hardware interface for Franka Robotics research robots
+        </description>
+    </class>
 </library>

@@ -97,6 +97,14 @@ void Robot::writeOnceJointVelocities(const std::array<double, 7>& velocities) {
 
   auto velocity_command = franka::JointVelocities(velocities);
 
+  if (joint_velocity_command_low_pass_filter_active_) {
+    for (size_t i = 0; i < 7; i++) {
+      velocity_command.dq.at(i) =
+          franka::lowpassFilter(franka::kDeltaT, velocity_command.dq.at(i), current_state_.dq_d.at(i),
+                                low_pass_filter_cut_off_freq);
+    }
+  }
+
   // If you are experiencing issues with robot error. You can try activating the rate limiter.
   // Rate limiter is default deactivated.
   if (velocity_command_rate_limit_active_) {

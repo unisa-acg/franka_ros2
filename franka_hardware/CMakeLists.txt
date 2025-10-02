@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.14)
 project(franka_hardware)
 
 if(NOT CMAKE_CXX_STANDARD)
@@ -6,14 +6,23 @@ if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -march=native -ffast-math -ftree-vectorize")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -ffast-math -ftree-vectorize -DNDEBUG -DEIGEN_NO_DEBUG")
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+ set(EIGEN_VECTORIZE TRUE)      # enables vectorization
+ set(EIGEN_NO_DEBUG TRUE)       # disables Eigen assertions for speed
 endif()
 
 option(CHECK_TIDY "Adds clang-tidy tests" OFF)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(franka_msgs REQUIRED)
@@ -21,33 +30,53 @@ find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(Franka 0.9.3 REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(realtime_tools REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(acg_optimal_control REQUIRED)
 
 add_library(franka_hardware SHARED
         src/franka_action_server.cpp
         src/franka_hardware_interface.cpp
+        src/franka_async_hardware_interface.cpp
+        src/robot_communication_thread.cpp
         src/robot.cpp
         src/franka_param_service_server.cpp
         src/franka_executor.cpp
+        src/panda_joint_command_governor.cpp
 )
 
 target_include_directories(
         franka_hardware
         PRIVATE
         include
+        ${EIGEN3_INCLUDE_DIRS}
+        ${acg_optimal_control_INCLUDE_DIRS}
+)
+
+target_link_libraries(
+        franka_hardware
+        PUBLIC
+        acg_optimal_control::acg_optimal_control
 )
 
 ament_target_dependencies(
         franka_hardware
+        PUBLIC
+        ament_index_cpp
         hardware_interface
         Franka
         pluginlib
         rclcpp
         rclcpp_action
         franka_msgs
+        realtime_tools
+)
+
+target_compile_definitions(franka_hardware PRIVATE
+    PACKAGE_NAME="${PROJECT_NAME}"
 )
 
 pluginlib_export_plugin_description_file(hardware_interface franka_hardware.xml)
-
 
 install(
         TARGETS franka_hardware
@@ -56,6 +85,10 @@ install(
 install(
         DIRECTORY include/
         DESTINATION include
+)
+install(
+        DIRECTORY data/
+        DESTINATION share/${PROJECT_NAME}/data
 )
 
 if(BUILD_TESTING)
