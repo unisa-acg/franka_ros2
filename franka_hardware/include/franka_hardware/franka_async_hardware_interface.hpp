@@ -42,15 +42,6 @@ class FrankaAsyncHardwareInterface : public FrankaHardwareInterface {
   hardware_interface::return_type write(const rclcpp::Time& time,
                                         const rclcpp::Duration& period) override;
 
-  /**
-   * @brief Reads a boolean parameter from the hardware parameters.
-   * @param info The hardware info containing parameters.
-   * @param param_name The name of the parameter to read.
-   * @param value Output parameter to store the boolean value.
-   * @return True if the parameter exists, false otherwise.
-   */
-  bool read_bool_param(const hardware_interface::HardwareInfo& info, const std::string& param_name, bool& value);
-
   static constexpr int N_JOINTS = 7;
 
  private:

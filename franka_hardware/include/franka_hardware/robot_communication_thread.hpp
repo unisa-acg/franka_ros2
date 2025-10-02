@@ -30,8 +30,6 @@
 #include "franka_hardware/robot.hpp"
 #include "franka_hardware/iir_filter.hpp"
 
-#include "franka_hardware/panda_joint_command_governor.hpp"
-
 namespace franka_hardware {
 
 enum class RobotCommandMode {
@@ -68,10 +66,7 @@ class RobotCommunicationThread : public std::thread {
   void enable();
   void disable();
 
-  // Setters
   void set_filter_commands(bool should_filter);
-
-  void set_command_governor(bool enabled);
 
  private:
   void run();
@@ -127,12 +122,7 @@ class RobotCommunicationThread : public std::thread {
 
   std::vector<acg_signal_processing::IIRFilter<7, 0>> iir_filters_;
 
-  // Optional advanced command governor
-  std::unique_ptr<acg_optimal_control::PandaJointCommandGovernor> command_governor_;
-
   bool should_filter_ = false;
-
-  bool is_command_governor_enabled_ = false;
 };
 
 }  // namespace franka_hardware
