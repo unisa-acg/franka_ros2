@@ -23,17 +23,6 @@ namespace franka_hardware {
 using StateInterface = hardware_interface::StateInterface;
 using CommandInterface = hardware_interface::CommandInterface;
 
-bool FrankaAsyncHardwareInterface::read_bool_param(const hardware_interface::HardwareInfo& info, const std::string& param_name, bool& value) {
-  auto param_value = info.hardware_parameters.find(param_name);
-  if (param_value == info.hardware_parameters.end()) {
-    return false;
-  }
-  std::string value_lower = param_value->second;
-  std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
-  value = (value_lower == "true");
-  return true;
-}
-
 CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::HardwareInfo& info) {
   CallbackReturn return_value = this->FrankaHardwareInterface::on_init(info);
   if (return_value != CallbackReturn::SUCCESS) {
@@ -46,23 +35,18 @@ CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::H
 
   // Read the filter_commands parameter from the hardware parameters
   bool filter_commands = false;
-  if (!read_bool_param(info, "filter_commands", filter_commands)) {
-    RCLCPP_WARN(getLogger(), "Parameter 'filter_commands' not found. Using default: false.");
-  }
-
-  // Read the use_command_governor parameter from the hardware parameters
-  bool use_command_governor = false;
-  if (!read_bool_param(info, "use_command_governor", use_command_governor)) {
-    RCLCPP_WARN(getLogger(), "Parameter 'use_command_governor' not found. Using default: false.");
+  if (auto param_value = info.hardware_parameters.find("filter_commands"); param_value != info.hardware_parameters.end())
+  {
+    std::string value_lower = param_value->second;
+    std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
+    filter_commands = (value_lower == "true");
   }
 
   // Initialize the robot communication thread
   robot_communication_thread_ = std::make_shared<RobotCommunicationThread>(robot_);
 
-  // Configure the communication thread based on the parameters
+  // Set the filter commands flag
   robot_communication_thread_->set_filter_commands(filter_commands);
-  robot_communication_thread_->set_command_governor(use_command_governor);
-
   // TODO: Wait for the robot state to be available
   return CallbackReturn::SUCCESS;
 }
