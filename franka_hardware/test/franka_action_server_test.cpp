@@ -24,7 +24,9 @@ void get_action_service_response(
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
   const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = hardware_info;
+  franka_hardware_interface.on_init(params);
 
   auto node = rclcpp::Node::make_shared("test_node");
 

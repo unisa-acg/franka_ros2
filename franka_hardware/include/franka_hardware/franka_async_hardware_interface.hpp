@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-#include <hardware_interface/visibility_control.h>
 #include <hardware_interface/hardware_info.hpp>
 #include <hardware_interface/system_interface.hpp>
 #include <hardware_interface/types/hardware_interface_return_values.hpp>
@@ -28,7 +27,7 @@ using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface
 class FrankaAsyncHardwareInterface : public FrankaHardwareInterface {
  public:
   FrankaAsyncHardwareInterface() : FrankaHardwareInterface() {};
-  CallbackReturn on_init(const hardware_interface::HardwareInfo& info) override;
+  CallbackReturn on_init(const hardware_interface::HardwareComponentInterfaceParams & params) override;
   CallbackReturn on_activate(const rclcpp_lifecycle::State& previous_state) override;
   CallbackReturn on_deactivate(const rclcpp_lifecycle::State& previous_state) override;
   hardware_interface::return_type prepare_command_mode_switch(

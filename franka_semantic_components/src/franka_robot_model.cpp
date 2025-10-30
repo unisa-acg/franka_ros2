@@ -60,8 +60,18 @@ void FrankaRobotModel::initialize() {
 
   if (franka_state_interface != state_interfaces_.end() &&
       franka_model_interface != state_interfaces_.end()) {
-    robot_model_ = bit_cast<franka_hardware::Model*>((*franka_model_interface).get().get_value());
-    robot_state_ = bit_cast<franka::RobotState*>((*franka_state_interface).get().get_value());
+    {
+      auto opt_model = (*franka_model_interface).get().get_optional();
+      auto opt_state = (*franka_state_interface).get().get_optional();
+      if (!opt_model.has_value() || !opt_state.has_value()) {
+        RCLCPP_ERROR(rclcpp::get_logger("franka_model_semantic_component"),
+                     "Franka interface value missing! Did you assign the loaned state in the "
+                     "controller?");
+        throw std::runtime_error("Franka state interfaces missing values");
+      }
+      robot_model_ = bit_cast<franka_hardware::Model*>(opt_model.value());
+      robot_state_ = bit_cast<franka::RobotState*>(opt_state.value());
+    }
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("franka_model_semantic_component"),
                  "Franka interface does not exist! Did you assign the loaned state in the "

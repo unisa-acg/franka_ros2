@@ -23,8 +23,8 @@ namespace franka_hardware {
 using StateInterface = hardware_interface::StateInterface;
 using CommandInterface = hardware_interface::CommandInterface;
 
-CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::HardwareInfo& info) {
-  CallbackReturn return_value = this->FrankaHardwareInterface::on_init(info);
+CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::HardwareComponentInterfaceParams & params) {
+  CallbackReturn return_value = this->FrankaHardwareInterface::on_init(params);
   if (return_value != CallbackReturn::SUCCESS) {
     return return_value;
   }
@@ -33,11 +33,11 @@ CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::H
     return CallbackReturn::ERROR;
   }
 
-  // Read the filter_commands parameter from the hardware parameters
+  // Read the filter_commands parameter from the hardware parameters.
   bool filter_commands = false;
-  if (auto param_value = info.hardware_parameters.find("filter_commands"); param_value != info.hardware_parameters.end())
-  {
-    std::string value_lower = param_value->second;
+  auto hw_params_it = info_.hardware_parameters.find("filter_commands");
+  if (hw_params_it != info_.hardware_parameters.end()) {
+    std::string value_lower = hw_params_it->second;
     std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
     filter_commands = (value_lower == "true");
   }

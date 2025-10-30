@@ -20,7 +20,7 @@
 #include "hardware_interface/types/hardware_interface_return_values.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/rclcpp.hpp"
-#include "ros2_control_test_assets/descriptions.hpp"
+#include <ros2_control_test_assets/descriptions.hpp>
 
 class MockFrankaRobotState : public franka_semantic_components::FrankaRobotState {
  public:
@@ -37,7 +37,7 @@ class TestFrankaRobotStateBroadcaster : public ::testing::Test {
     franka_robot_state_ = std::make_unique<MockFrankaRobotState>(
         "mock_franka_robot_state", ros2_control_test_assets::minimal_robot_urdf);
     broadcaster_ = std::make_unique<FrankaRobotStateBroadcaster>(std::move(franka_robot_state_));
-    broadcaster_->init("test_broadcaster");
+    broadcaster_->init("test_broadcaster", "", 1u, "", rclcpp::NodeOptions());
     broadcaster_->get_node()->set_parameter(
         {"robot_description", ros2_control_test_assets::minimal_robot_urdf});
   }

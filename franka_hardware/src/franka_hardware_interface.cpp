@@ -216,13 +216,15 @@ hardware_interface::return_type FrankaHardwareInterface::write(const rclcpp::Tim
   return hardware_interface::return_type::OK;
 }
 
-CallbackReturn FrankaHardwareInterface::on_init(const hardware_interface::HardwareInfo& info) {
-  if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS) {
+CallbackReturn FrankaHardwareInterface::on_init(
+    const hardware_interface::HardwareComponentInterfaceParams & params) {
+
+  if (hardware_interface::SystemInterface::on_init(params) != CallbackReturn::SUCCESS) {
     return CallbackReturn::ERROR;
   }
+
   if (info_.joints.size() != kNumberOfJoints) {
-    RCLCPP_FATAL(getLogger(), "Got %ld joints. Expected %ld.", info_.joints.size(),
-                 kNumberOfJoints);
+    RCLCPP_FATAL(getLogger(), "Got %ld joints. Expected %ld.", info_.joints.size(), kNumberOfJoints);
     return CallbackReturn::ERROR;
   }
 
@@ -236,7 +238,7 @@ CallbackReturn FrankaHardwareInterface::on_init(const hardware_interface::Hardwa
         joint.command_interfaces[0].name != hardware_interface::HW_IF_VELOCITY &&
         joint.command_interfaces[0].name != hardware_interface::HW_IF_POSITION) {
       RCLCPP_FATAL(getLogger(),
-                   "Joint '%s' has unexpected command interface '%s'. Expected '%s' and '%s' ",
+                   "Joint '%s' has unexpected command interface '%s'. Expected '%s' or '%s'.",
                    joint.name.c_str(), joint.command_interfaces[0].name.c_str(),
                    hardware_interface::HW_IF_EFFORT, hardware_interface::HW_IF_VELOCITY);
       return CallbackReturn::ERROR;
@@ -262,6 +264,7 @@ CallbackReturn FrankaHardwareInterface::on_init(const hardware_interface::Hardwa
                    hardware_interface::HW_IF_EFFORT);
     }
   }
+
   if (!robot_) {
     std::string robot_ip;
     try {
@@ -270,16 +273,18 @@ CallbackReturn FrankaHardwareInterface::on_init(const hardware_interface::Hardwa
       RCLCPP_FATAL(getLogger(), "Parameter 'robot_ip' is not set");
       return CallbackReturn::ERROR;
     }
+
     try {
       arm_id_ = info_.hardware_parameters.at("arm_id");
     } catch (const std::out_of_range& ex) {
       RCLCPP_WARN(getLogger(), "Parameter 'arm_id' is not set.");
       RCLCPP_WARN(getLogger(),
                   "Deprecation Warning: In the next release, 'arm_id' should be set in the URDF. "
-                  "Using 'panda' as default 'arm_id' will not be supported."
+                  "Using 'panda' as default 'arm_id' will not be supported. "
                   "Please use the latest franka_description package from: "
                   "https://github.com/frankaemika/franka_description");
     }
+
     try {
       RCLCPP_INFO(getLogger(), "Connecting to robot at \"%s\" ...", robot_ip.c_str());
       robot_ = std::make_shared<Robot>(robot_ip, getLogger());
@@ -288,6 +293,7 @@ CallbackReturn FrankaHardwareInterface::on_init(const hardware_interface::Hardwa
       RCLCPP_FATAL(getLogger(), "%s", e.what());
       return CallbackReturn::ERROR;
     }
+
     RCLCPP_INFO(getLogger(), "Successfully connected to robot");
   }
 
