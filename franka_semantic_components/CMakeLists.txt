@@ -21,6 +21,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     sensor_msgs
     hardware_interface
     rclcpp_lifecycle
+    controller_interface
     urdf)
 
 # find dependencies
