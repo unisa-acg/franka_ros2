@@ -26,7 +26,7 @@ find_package(yaml_cpp_vendor REQUIRED)
 find_package(franka_hardware REQUIRED)
 find_package(urdf REQUIRED)
 find_package(kdl_parser REQUIRED)
-find_package(Franka 0.13.3 REQUIRED)
+find_package(Franka 0.9.3 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 
