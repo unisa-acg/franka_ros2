@@ -62,10 +62,11 @@ controller_interface::return_type JointVelocityExampleController::update(
                  (1.0 - std::cos(2.0 * M_PI / time_max.seconds() * elapsed_time_.seconds()));
 
   for (int i = 0; i < num_joints; i++) {
-    if (i == 3 || i == 4) {
-      command_interfaces_[i].set_value(omega);
-    } else {
-      command_interfaces_[i].set_value(0.0);
+    double target = (i == 3 || i == 4) ? omega : 0.0;
+    if (!command_interfaces_[i].set_value(target)) {
+      RCLCPP_ERROR(get_node()->get_logger(), "Failed to set command interface %s value",
+                   command_interfaces_[i].get_name().c_str());
+      return controller_interface::return_type::ERROR;
     }
   }
   return controller_interface::return_type::OK;

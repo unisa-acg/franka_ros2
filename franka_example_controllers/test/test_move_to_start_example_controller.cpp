@@ -18,6 +18,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "test_move_to_start_example_controller.hpp"
 
+#include <ros2_control_test_assets/descriptions.hpp>
 #include "hardware_interface/handle.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/utilities.hpp"
@@ -42,7 +43,11 @@ void MoveToStartExampleControllerTest::TearDown() {
 }
 
 void MoveToStartExampleControllerTest::SetUpController() {
-  const auto result = controller_->init("test_move_to_start_example");
+  const auto result = controller_->init("test_move_to_start_example",
+                                        ros2_control_test_assets::minimal_robot_urdf, 30, "",
+                                        rclcpp::NodeOptions()
+                                            .allow_undeclared_parameters(true)
+                                            .automatically_declare_parameters_from_overrides(true));
   ASSERT_EQ(result, controller_interface::return_type::OK);
   std::vector<LoanedCommandInterface> command_ifs;
   std::vector<LoanedStateInterface> state_ifs;
@@ -80,7 +85,7 @@ TEST_F(MoveToStartExampleControllerTest, controller_gains_not_set_failure) {
   ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::FAILURE);
 }
 
-TEST_F(MoveToStartExampleControllerTest, contoller_gain_empty) {
+TEST_F(MoveToStartExampleControllerTest, controller_gain_empty) {
   SetUpController();
   controller_->get_node()->set_parameter({"k_gains", std::vector<double>()});
 
@@ -88,7 +93,7 @@ TEST_F(MoveToStartExampleControllerTest, contoller_gain_empty) {
   ASSERT_EQ(controller_->on_configure(rclcpp_lifecycle::State()), CallbackReturn::FAILURE);
 }
 
-TEST_F(MoveToStartExampleControllerTest, contoller_damping_gain_empty) {
+TEST_F(MoveToStartExampleControllerTest, controller_damping_gain_empty) {
   SetUpController();
   controller_->get_node()->set_parameter({"k_gains", K_gains_});
   controller_->get_node()->set_parameter({"d_gains", std::vector<double>()});
@@ -127,11 +132,11 @@ TEST_F(MoveToStartExampleControllerTest, correct_setup_on_update_expect_ok) {
 
   ASSERT_EQ(controller_->update(time, duration), controller_interface::return_type::OK);
 
-  EXPECT_NEAR(joint_1_pos_cmd_.get_value(), 0.0, k_EPS);
-  EXPECT_NEAR(joint_2_pos_cmd_.get_value(), 0.0, k_EPS);
-  EXPECT_NEAR(joint_3_pos_cmd_.get_value(), 0.0, k_EPS);
-  EXPECT_NEAR(joint_4_pos_cmd_.get_value(), 0.0, k_EPS);
-  EXPECT_NEAR(joint_5_pos_cmd_.get_value(), 0.0, k_EPS);
-  EXPECT_NEAR(joint_6_pos_cmd_.get_value(), 0.0, k_EPS);
-  EXPECT_NEAR(joint_7_pos_cmd_.get_value(), 0.0, k_EPS);
+  EXPECT_NEAR(joint_1_pos_cmd_.get_optional<double>().value_or(-1), 0.0, k_EPS);
+  EXPECT_NEAR(joint_2_pos_cmd_.get_optional<double>().value_or(-1), 0.0, k_EPS);
+  EXPECT_NEAR(joint_3_pos_cmd_.get_optional<double>().value_or(-1), 0.0, k_EPS);
+  EXPECT_NEAR(joint_4_pos_cmd_.get_optional<double>().value_or(-1), 0.0, k_EPS);
+  EXPECT_NEAR(joint_5_pos_cmd_.get_optional<double>().value_or(-1), 0.0, k_EPS);
+  EXPECT_NEAR(joint_6_pos_cmd_.get_optional<double>().value_or(-1), 0.0, k_EPS);
+  EXPECT_NEAR(joint_7_pos_cmd_.get_optional<double>().value_or(-1), 0.0, k_EPS);
 }

@@ -53,8 +53,9 @@ void get_param_service_response(
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
 
   auto node = rclcpp::Node::make_shared("test_node");
 
@@ -79,10 +80,11 @@ void get_param_service_response(
 
 TEST_F(FrankaHardwareInterfaceTest, when_on_init_called_expect_success) {
   auto mock_robot = std::make_shared<MockRobot>();
-  const hardware_interface::HardwareInfo info = createHardwareInfo();
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
-  auto return_type = franka_hardware_interface.on_init(info);
+  auto return_type = franka_hardware_interface.on_init(params);
 
   ASSERT_EQ(return_type,
             rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
@@ -125,8 +127,9 @@ TEST_F(
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   auto time = rclcpp::Time(0);
   auto duration = rclcpp::Duration(0, 0);
   auto return_type = franka_hardware_interface.read(time, duration);
@@ -148,8 +151,10 @@ TEST_F(
       ASSERT_EQ(states[i].get_name(), joint_name + "/" + k_effort_controller);
     } else if (i % 4 == 3) {
       ASSERT_EQ(states[i].get_name(), joint_name + "/" + "initial_joint_position");
-    } else
-      ASSERT_EQ(states[i].get_value(), 0.0);
+    } else {
+      ASSERT_TRUE(states[i].get_optional().has_value());
+      ASSERT_EQ(*states[i].get_optional(), 0.0);
+    }
   }
 
   ASSERT_EQ(states.size(), state_interface_size);
@@ -172,8 +177,9 @@ TEST_F(
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   auto time = rclcpp::Time(0);
   auto duration = rclcpp::Duration(0, 0);
   auto return_type = franka_hardware_interface.read(time, duration);
@@ -181,9 +187,10 @@ TEST_F(
   auto states = franka_hardware_interface.export_state_interfaces();
   ASSERT_EQ(states[state_interface_size - 19].get_name(),
             "fr3/robot_model");  // Last state interface is the robot model state +
-                                 // initial_pose(16) + inital_elbow(2) + initial position(7)
-  EXPECT_NEAR(states[state_interface_size - 19]
-                  .get_value(),  // initial_pose(16), initial_pose(2) + initial position(7)
+  // initial_pose(16) + inital_elbow(2) + initial position(7)
+  EXPECT_TRUE(states[state_interface_size - 19].get_optional().has_value());
+  EXPECT_NEAR(*states[state_interface_size - 19]
+                   .get_optional(),  // initial_pose(16), initial_pose(2) + initial position(7)
               *reinterpret_cast<double*>(&model_address),
               k_EPS);  // testing that the casted mock_model ptr
                        // is correctly pushed to state interface
@@ -206,8 +213,9 @@ TEST_F(
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   auto time = rclcpp::Time(0);
   auto duration = rclcpp::Duration(0, 0);
   auto return_type = franka_hardware_interface.read(time, duration);
@@ -215,7 +223,8 @@ TEST_F(
   auto states = franka_hardware_interface.export_state_interfaces();
   ASSERT_EQ(states[state_interface_size - 2].get_name(),
             "fr3/robot_state");  // Last state interface is the robot model state
-  EXPECT_NEAR(states[state_interface_size - 2].get_value(),
+  EXPECT_TRUE(states[state_interface_size - 2].get_optional().has_value());
+  EXPECT_NEAR(*states[state_interface_size - 2].get_optional(),
               *reinterpret_cast<double*>(&robot_state_address),
               k_EPS);  // testing that the casted robot state ptr
                        // is correctly pushed to state interface
@@ -229,11 +238,12 @@ TEST_P(FrankaHardwareInterfaceTest,
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> stop_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     stop_interface.push_back(joint_name + "/" + command_interface);
   }
@@ -251,11 +261,12 @@ TEST_P(
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> stop_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     stop_interface.push_back(joint_name + "/" + command_interface);
   }
@@ -273,11 +284,12 @@ TEST_P(FrankaHardwareInterfaceTest,
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> start_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     start_interface.push_back(joint_name + "/" + command_interface);
   }
@@ -297,11 +309,12 @@ TEST_P(
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> start_interface, stop_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     stop_interface.push_back(joint_name + "/" + command_interface);
   }
@@ -322,11 +335,12 @@ TEST_P(FrankaHardwareInterfaceTest, when_write_called_expect_ok) {
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> start_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     start_interface.push_back(joint_name + "/" + command_interface);
   }
@@ -359,11 +373,12 @@ TEST_F(FrankaHardwareInterfaceTest, when_write_called_with_inifite_command_expec
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> start_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     start_interface.push_back(joint_name + "/" + k_position_controller);
   }
@@ -393,11 +408,12 @@ TEST_F(
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> start_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     start_interface.push_back(joint_name + "/" + k_position_controller);
   }
@@ -463,11 +479,12 @@ TEST_P(FrankaHardwareInterfaceTest,
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> start_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     start_interface.push_back(joint_name + "/" + command_interface);
   }
@@ -491,11 +508,12 @@ TEST_P(FrankaHardwareInterfaceTest,
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
-  franka_hardware_interface.on_init(hardware_info);
+  hardware_interface::HardwareComponentInterfaceParams params;
+  params.hardware_info = createHardwareInfo();
+  franka_hardware_interface.on_init(params);
   std::vector<std::string> start_interface;
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     start_interface.push_back(joint_name + "/" + command_interface);
   }
@@ -508,7 +526,7 @@ TEST_P(FrankaHardwareInterfaceTest,
   ASSERT_EQ(franka_hardware_interface.perform_command_mode_switch(start_interface, stop_interface),
             hardware_interface::return_type::OK);
 
-  for (size_t i = 0; i < hardware_info.joints.size(); i++) {
+  for (size_t i = 0; i < params.hardware_info.joints.size(); i++) {
     const std::string joint_name = k_joint_name + std::to_string(i);
     stop_interface.push_back(joint_name + "/" + command_interface);
   }

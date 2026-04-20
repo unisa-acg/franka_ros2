@@ -14,6 +14,8 @@
 
 #include <gmock/gmock.h>
 #include <memory>
+#include <rclcpp/clock.hpp>
+#include <rclcpp/logger.hpp>
 
 #include "controller_manager/controller_manager.hpp"
 #include "hardware_interface/resource_manager.hpp"
@@ -27,10 +29,11 @@ TEST(TestLoadFrankaRobotStateBroadcaster, load_controller) {
 
   std::shared_ptr<rclcpp::Executor> executor =
       std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
-
-  controller_manager::ControllerManager cm(std::make_unique<hardware_interface::ResourceManager>(
-                                               ros2_control_test_assets::minimal_robot_urdf),
-                                           executor, "test_controller_manager");
+  rclcpp::Logger logger = rclcpp::get_logger("load_controller");
+  controller_manager::ControllerManager cm(
+      std::make_unique<hardware_interface::ResourceManager>(
+          ros2_control_test_assets::minimal_robot_urdf, std::make_shared<rclcpp::Clock>(), logger),
+      executor, "test_controller_manager");
 
   auto controller =
       cm.load_controller("test_franka_robot_state_broadcaster",
