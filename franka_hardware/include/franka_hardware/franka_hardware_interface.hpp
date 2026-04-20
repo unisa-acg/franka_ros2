@@ -21,6 +21,7 @@
 #include <hardware_interface/hardware_info.hpp>
 #include <hardware_interface/types/hardware_component_interface_params.hpp>
 #include <hardware_interface/system_interface.hpp>
+#include <hardware_interface/types/hardware_component_interface_params.hpp>
 #include <hardware_interface/types/hardware_interface_return_values.hpp>
 #include <rclcpp/logger.hpp>
 #include <rclcpp/macros.hpp>
@@ -60,9 +61,8 @@ class FrankaHardwareInterface : public hardware_interface::SystemInterface {
                                        const rclcpp::Duration& period) override;
   hardware_interface::return_type write(const rclcpp::Time& time,
                                         const rclcpp::Duration& period) override;
-CallbackReturn on_init(
-const hardware_interface::HardwareComponentInterfaceParams & params) override;
-
+  CallbackReturn on_init(
+      const hardware_interface::HardwareComponentInterfaceParams& params) override;
   static const size_t kNumberOfJoints = 7;
 
  protected:

@@ -59,11 +59,18 @@ controller_interface::return_type MoveToStartExampleController::update(
     Vector7d tau_d_calculated =
         k_gains_.cwiseProduct(q_desired - q_) + d_gains_.cwiseProduct(-dq_filtered_);
     for (int i = 0; i < 7; ++i) {
-      command_interfaces_[i].set_value(tau_d_calculated(i));
+      if (!command_interfaces_[i].set_value(tau_d_calculated(i))) {
+        RCLCPP_FATAL(get_node()->get_logger(), "Failed to set command interface value");
+        return controller_interface::return_type::ERROR;
+      }
     }
   } else {
+    bool ret = true;
     for (auto& command_interface : command_interfaces_) {
-      command_interface.set_value(0);
+      ret &= command_interface.set_value(0.0);
+    }
+    if (!ret) {
+      RCLCPP_FATAL(get_node()->get_logger(), "Failure to clear the torque at the end of control. ");
     }
     this->get_node()->set_parameter({"process_finished", true});
   }
@@ -131,8 +138,8 @@ void MoveToStartExampleController::updateJointStates() {
     assert(position_interface.get_interface_name() == "position");
     assert(velocity_interface.get_interface_name() == "velocity");
 
-    q_(i) = position_interface.get_value();
-    dq_(i) = velocity_interface.get_value();
+    q_(i) = position_interface.get_optional().value();
+    dq_(i) = velocity_interface.get_optional().value();
   }
 }
 }  // namespace franka_example_controllers

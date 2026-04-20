@@ -71,8 +71,7 @@ std::vector<double> FrankaSemanticComponentInterface::get_values_state_interface
   std::vector<double> state_interface_values;
   // insert all the state_interface_values
   for (const auto& state_interface : state_interfaces_) {
-    auto opt = state_interface.get().get_optional();
-    state_interface_values.emplace_back(opt.has_value() ? opt.value() : 0.0);
+    state_interface_values.emplace_back(state_interface.get().get_optional().value());
   }
   return state_interface_values;
 }
@@ -81,8 +80,7 @@ std::vector<double> FrankaSemanticComponentInterface::get_values_command_interfa
   std::vector<double> command_interface_values;
   // insert all the command_interface_values
   for (const auto& command_interface : command_interfaces_) {
-    auto opt = command_interface.get().get_optional();
-    command_interface_values.emplace_back(opt.has_value() ? opt.value() : 0.0);
+    command_interface_values.emplace_back(command_interface.get().get_optional().value());
   }
 
   return command_interface_values;
@@ -93,14 +91,12 @@ bool FrankaSemanticComponentInterface::set_values(const std::vector<double>& val
   if (values.size() != command_interfaces_.size()) {
     return false;
   }
-  // // insert all the values
+  // insert all the values
+  bool all_set = true;
   for (size_t i = 0; i < command_interfaces_.size(); ++i) {
-    if (!command_interfaces_[i].get().set_value(values[i])) {
-      return false;
-    }
+    all_set &= command_interfaces_[i].get().set_value(values[i]);
   }
-
-  return true;
+  return all_set;
 }
 
 }  // namespace franka_semantic_components

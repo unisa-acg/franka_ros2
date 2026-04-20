@@ -23,9 +23,8 @@ void get_action_service_response(
   std::string arm_id{"fr3"};
   franka_hardware::FrankaHardwareInterface franka_hardware_interface(mock_robot, arm_id);
 
-  const auto hardware_info = createHardwareInfo();
   hardware_interface::HardwareComponentInterfaceParams params;
-  params.hardware_info = hardware_info;
+  params.hardware_info = createHardwareInfo();
   franka_hardware_interface.on_init(params);
 
   auto node = rclcpp::Node::make_shared("test_node");

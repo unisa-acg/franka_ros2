@@ -217,8 +217,7 @@ hardware_interface::return_type FrankaHardwareInterface::write(const rclcpp::Tim
 }
 
 CallbackReturn FrankaHardwareInterface::on_init(
-    const hardware_interface::HardwareComponentInterfaceParams & params) {
-
+    const hardware_interface::HardwareComponentInterfaceParams& params) {
   if (hardware_interface::SystemInterface::on_init(params) != CallbackReturn::SUCCESS) {
     return CallbackReturn::ERROR;
   }
