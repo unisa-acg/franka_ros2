@@ -189,11 +189,14 @@ TEST_F(
             "fr3/robot_model");  // Last state interface is the robot model state +
   // initial_pose(16) + inital_elbow(2) + initial position(7)
   EXPECT_TRUE(states[state_interface_size - 19].get_optional().has_value());
-  EXPECT_NEAR(*states[state_interface_size - 19]
-                   .get_optional(),  // initial_pose(16), initial_pose(2) + initial position(7)
-              *reinterpret_cast<double*>(&model_address),
-              k_EPS);  // testing that the casted mock_model ptr
-                       // is correctly pushed to state interface
+  double model_ptr_as_double;
+  static_assert(sizeof(model_address) == sizeof(model_ptr_as_double));
+  std::memcpy(&model_ptr_as_double, &model_address, sizeof(model_ptr_as_double));
+  EXPECT_NEAR(
+      *states[state_interface_size - 19]  // initial_pose(16), initial_pose(2) + initial position(7)
+           .get_optional(),
+      model_ptr_as_double, k_EPS);  // testing that the casted mock_model ptr is
+                                    // correctly pushed to state interface
 }
 
 TEST_F(
@@ -224,8 +227,10 @@ TEST_F(
   ASSERT_EQ(states[state_interface_size - 2].get_name(),
             "fr3/robot_state");  // Last state interface is the robot model state
   EXPECT_TRUE(states[state_interface_size - 2].get_optional().has_value());
-  EXPECT_NEAR(*states[state_interface_size - 2].get_optional(),
-              *reinterpret_cast<double*>(&robot_state_address),
+  double expected_state_ptr_as_double;
+  std::memcpy(&expected_state_ptr_as_double, &robot_state_address,
+              sizeof(expected_state_ptr_as_double));
+  EXPECT_NEAR(*states[state_interface_size - 2].get_optional(), expected_state_ptr_as_double,
               k_EPS);  // testing that the casted robot state ptr
                        // is correctly pushed to state interface
 }
