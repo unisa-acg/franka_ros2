@@ -11,6 +11,7 @@
 
   <depend>eigen</depend>
   <depend>rclcpp</depend>
+  <depend>libfranka</depend>
   <depend>franka_msgs</depend>
   <depend>hardware_interface</depend>
   <depend>pluginlib</depend>
