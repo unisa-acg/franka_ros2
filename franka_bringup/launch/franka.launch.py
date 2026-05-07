@@ -92,7 +92,16 @@ def robot_description_dependent_nodes_spawner(
                 'stderr': 'screen',
             },
             on_exit=Shutdown(),
-        )
+        ),
+        Node(
+            package='joint_state_publisher',
+            executable='joint_state_publisher',
+            name='joint_state_publisher',
+            parameters=[{
+                'source_list': ['franka/joint_states', f'{arm_id_str}_gripper/joint_states'],
+                'rate': 30,
+            }],
+        ),
     ]
     
     if LaunchConfiguration('initial_joint_controller').perform(context):
@@ -176,14 +185,6 @@ def generate_launch_description():
             default_value="",
             description="Initially loaded robot controller. The controller has to be defined in the "
             "controllers file.",
-        ),
-        Node(
-            package='joint_state_publisher',
-            executable='joint_state_publisher',
-            name='joint_state_publisher',
-            parameters=[
-                {'source_list': ['franka/joint_states', 'franka_gripper/joint_states'],
-                 'rate': 30}],
         ),
         robot_description_dependent_nodes_spawner_opaque_function,
         Node(
