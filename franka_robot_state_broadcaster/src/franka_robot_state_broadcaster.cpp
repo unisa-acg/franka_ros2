@@ -158,7 +158,8 @@ controller_interface::return_type FrankaRobotStateBroadcaster::update(
     return controller_interface::return_type::OK;
 
   } else {
-    return controller_interface::return_type::ERROR;
+    // RCLCPP_ERROR(get_node()->get_logger(), "FRANKA: Failed to lock realtime publisher.");
+    return controller_interface::return_type::OK;
   }
 }
 
