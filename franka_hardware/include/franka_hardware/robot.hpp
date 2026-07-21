@@ -251,6 +251,20 @@ class Robot {
    */
   virtual void automaticErrorRecovery();
 
+  /**
+   * Sets whether the joint position command rate limiter is active.
+   *
+   * @param[in] active true to enable the rate limiter, false to disable it.
+   */
+  virtual void setJointPositionCommandRateLimitActive(bool active);
+
+  /**
+   * Sets whether the joint position command low pass filter is active.
+   *
+   * @param[in] active true to enable the low pass filter, false to disable it.
+   */
+  virtual void setJointPositionCommandLowPassFilterActive(bool active);
+
  protected:
   Robot() = default;
 

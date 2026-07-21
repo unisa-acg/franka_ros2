@@ -23,8 +23,23 @@ namespace franka_hardware {
 using StateInterface = hardware_interface::StateInterface;
 using CommandInterface = hardware_interface::CommandInterface;
 
+namespace {
+bool getBoolHardwareParameter(const hardware_interface::HardwareInfo& info,
+                              const std::string& parameter_name,
+                              bool default_value) {
+  auto param_value = info.hardware_parameters.find(parameter_name);
+  if (param_value == info.hardware_parameters.end()) {
+    return default_value;
+  }
+  std::string value_lower = param_value->second;
+  std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
+  return value_lower == "true";
+}
+}  // namespace
+
 CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::HardwareComponentInterfaceParams & params) {
   CallbackReturn return_value = this->FrankaHardwareInterface::on_init(params);
+  
   if (return_value != CallbackReturn::SUCCESS) {
     return return_value;
   }
@@ -33,14 +48,15 @@ CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::H
     return CallbackReturn::ERROR;
   }
 
-  // Read the filter_commands parameter from the hardware parameters.
-  bool filter_commands = false;
-  auto hw_params_it = info_.hardware_parameters.find("filter_commands");
-  if (hw_params_it != info_.hardware_parameters.end()) {
-    std::string value_lower = hw_params_it->second;
-    std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
-    filter_commands = (value_lower == "true");
-  }
+  bool filter_commands = getBoolHardwareParameter(info, "filter_commands", false);
+
+  bool joint_position_rate_limit =
+      getBoolHardwareParameter(info, "joint_position_rate_limit", true);
+  robot_->setJointPositionCommandRateLimitActive(joint_position_rate_limit);
+
+  bool joint_position_low_pass_filter =
+      getBoolHardwareParameter(info, "joint_position_low_pass_filter", false);
+  robot_->setJointPositionCommandLowPassFilterActive(joint_position_low_pass_filter);
 
   // Initialize the robot communication thread
   robot_communication_thread_ = std::make_shared<RobotCommunicationThread>(robot_);
