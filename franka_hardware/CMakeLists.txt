@@ -29,6 +29,7 @@ endif()
 
 if(FRANKA_LTTNG_ENABLED)
   add_library(franka_hardware_tracing STATIC tracing/tp.c)
+  set_target_properties(franka_hardware_tracing PROPERTIES POSITION_INDEPENDENT_CODE ON)
   target_include_directories(franka_hardware_tracing PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/tracing>
   )
@@ -84,7 +85,7 @@ ament_target_dependencies(
 
 target_link_libraries(
         franka_hardware
-        PRIVATE
+        # PRIVATE
         franka_hardware_tracing
 )
 
