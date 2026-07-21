@@ -16,11 +16,14 @@
 namespace franka_hardware {
 
 RobotCommunicationThread::RobotCommunicationThread(std::shared_ptr<Robot> robot)
-    : std::thread(&RobotCommunicationThread::run, this), robot_(robot), logger_(rclcpp::get_logger("RobotCommunicationThread")) 
-{
+    : std::thread(&RobotCommunicationThread::run, this),
+      robot_(robot),
+      logger_(rclcpp::get_logger("RobotCommunicationThread")) {
   iir_filters_.reserve(N_JOINTS);
   for (int i = 0; i < N_JOINTS; ++i) {
-    iir_filters_.emplace_back(std::array<double, 8>{1./8, 1./8, 1./8, 1./8, 1./8, 1./8, 1./8, 1./8}, std::array<double, 0>{});
+    iir_filters_.emplace_back(
+        std::array<double, 8>{1. / 8, 1. / 8, 1. / 8, 1. / 8, 1. / 8, 1. / 8, 1. / 8, 1. / 8},
+        std::array<double, 0>{});
   }
 }
 
@@ -84,15 +87,16 @@ void RobotCommunicationThread::read() {
 }
 
 void RobotCommunicationThread::filter_commands(std::chrono::steady_clock::time_point now) {
-  if(current_robot_command_mode_ != RobotCommandMode::JOINT_VELOCITY) {
-    return; // Filtering is only applied for joint velocity commands
+  if (current_robot_command_mode_ != RobotCommandMode::JOINT_VELOCITY) {
+    return;  // Filtering is only applied for joint velocity commands
   }
 
   // Ensure the command mutex is locked to prevent concurrent access
   std::lock_guard<std::mutex> lock(command_mutex_);
 
   // Get the current time in seconds
-  acg_signal_processing::Timestamp current_time = std::chrono::duration<double>(now.time_since_epoch()).count();
+  acg_signal_processing::Timestamp current_time =
+      std::chrono::duration<double>(now.time_since_epoch()).count();
 
   // Update IIR filters for each joint velocity command
   for (size_t i = 0; i < N_JOINTS; ++i) {
@@ -107,9 +111,7 @@ void RobotCommunicationThread::filter_commands(std::chrono::steady_clock::time_p
     if (iir_filters_[i].is_ready()) {
       acg_signal_processing::DataPoint<1> filtered_sample = iir_filters_[i].sample(current_time);
       filtered_velocity_commands_[i] = filtered_sample[0];
-    }
-    else
-    {
+    } else {
       iir_filters_[i].set_filter_state(async_hw_velocity_commands_[i]);
     }
   }
@@ -124,10 +126,9 @@ void RobotCommunicationThread::write() {
     robot_->writeOnce(async_hw_effort_commands_);
   } else if (current_robot_command_mode_ == RobotCommandMode::JOINT_VELOCITY &&
              !hasInfinite(async_hw_velocity_commands_)) {
-    if(should_filter_ && !hasInfinite(filtered_velocity_commands_)) {
+    if (should_filter_ && !hasInfinite(filtered_velocity_commands_)) {
       robot_->writeOnce(filtered_velocity_commands_);
-    }
-    else if (!hasInfinite(async_hw_velocity_commands_)) {
+    } else if (!hasInfinite(async_hw_velocity_commands_)) {
       robot_->writeOnce(async_hw_velocity_commands_);
     }
   } else if (current_robot_command_mode_ == RobotCommandMode::CARTESIAN_VELOCITY &&
@@ -215,7 +216,7 @@ void RobotCommunicationThread::run() {
   int i = 0;
   while (true) {
     if (is_enabled_) {
-      if(should_filter_) {
+      if (should_filter_) {
         // Apply filters to the joint commands
         filter_commands(now);
       }
@@ -227,8 +228,8 @@ void RobotCommunicationThread::run() {
       measured_period = std::chrono::duration<double>(now - old_now).count();
       old_now = now;
       if (fabs(measured_period - 1e-3) > communication_period_error_tolerance_) {
-        RCLCPP_WARN(logger_, "Anomalous communication period detected: %.6f s. Ignoring packet.",
-                    measured_period);
+        RCLCPP_DEBUG(logger_, "Anomalous communication period detected: %.6f s. Ignoring packet.",
+                     measured_period);
         should_ignore_packet = true;
       }
 
@@ -245,8 +246,8 @@ void RobotCommunicationThread::run() {
 // ------ PUBLIC MEMBER FUNCTIONS ------
 
 void RobotCommunicationThread::set_filter_commands(bool should_filter) {
-    should_filter_ = should_filter;
-  }
+  should_filter_ = should_filter;
+}
 
 void RobotCommunicationThread::enable() {
   is_enabled_ = true;
