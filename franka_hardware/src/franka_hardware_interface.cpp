@@ -223,7 +223,8 @@ CallbackReturn FrankaHardwareInterface::on_init(
   }
 
   if (info_.joints.size() != kNumberOfJoints) {
-    RCLCPP_FATAL(getLogger(), "Got %ld joints. Expected %ld.", info_.joints.size(), kNumberOfJoints);
+    RCLCPP_FATAL(getLogger(), "Got %ld joints. Expected %ld.", info_.joints.size(),
+                 kNumberOfJoints);
     return CallbackReturn::ERROR;
   }
 
@@ -298,8 +299,8 @@ CallbackReturn FrankaHardwareInterface::on_init(
 
   // Read the joint_position_rate_limit parameter from the hardware parameters
   bool joint_position_rate_limit = true;
-  if (auto param_value = info.hardware_parameters.find("joint_position_rate_limit"); param_value != info.hardware_parameters.end())
-  {
+  if (auto param_value = info_.hardware_parameters.find("joint_position_rate_limit");
+      param_value != info_.hardware_parameters.end()) {
     std::string value_lower = param_value->second;
     std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
     joint_position_rate_limit = (value_lower == "true");
@@ -308,8 +309,8 @@ CallbackReturn FrankaHardwareInterface::on_init(
 
   // Read the joint_position_low_pass_filter parameter from the hardware parameters
   bool joint_position_low_pass_filter = false;
-  if (auto param_value = info.hardware_parameters.find("joint_position_low_pass_filter"); param_value != info.hardware_parameters.end())
-  {
+  if (auto param_value = info_.hardware_parameters.find("joint_position_low_pass_filter");
+      param_value != info_.hardware_parameters.end()) {
     std::string value_lower = param_value->second;
     std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
     joint_position_low_pass_filter = (value_lower == "true");
