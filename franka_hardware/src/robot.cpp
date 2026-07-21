@@ -68,6 +68,14 @@ void Robot::stopRobot() {
   }
 }
 
+void Robot::setJointPositionCommandRateLimitActive(bool active) {
+  joint_position_command_rate_limit_active_ = active;
+}
+
+void Robot::setJointPositionCommandLowPassFilterActive(bool active) {
+  joint_position_command_low_pass_filter_active_ = active;
+}
+
 void Robot::writeOnce(const std::array<double, 7>& joint_commands) {
   if (!active_control_) {
     throw std::runtime_error("Control hasn't been started");

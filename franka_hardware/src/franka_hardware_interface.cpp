@@ -291,6 +291,26 @@ CallbackReturn FrankaHardwareInterface::on_init(const hardware_interface::Hardwa
     RCLCPP_INFO(getLogger(), "Successfully connected to robot");
   }
 
+  // Read the joint_position_rate_limit parameter from the hardware parameters
+  bool joint_position_rate_limit = true;
+  if (auto param_value = info.hardware_parameters.find("joint_position_rate_limit"); param_value != info.hardware_parameters.end())
+  {
+    std::string value_lower = param_value->second;
+    std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
+    joint_position_rate_limit = (value_lower == "true");
+  }
+  robot_->setJointPositionCommandRateLimitActive(joint_position_rate_limit);
+
+  // Read the joint_position_low_pass_filter parameter from the hardware parameters
+  bool joint_position_low_pass_filter = false;
+  if (auto param_value = info.hardware_parameters.find("joint_position_low_pass_filter"); param_value != info.hardware_parameters.end())
+  {
+    std::string value_lower = param_value->second;
+    std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
+    joint_position_low_pass_filter = (value_lower == "true");
+  }
+  robot_->setJointPositionCommandLowPassFilterActive(joint_position_low_pass_filter);
+
   service_node_ = std::make_shared<FrankaParamServiceServer>(rclcpp::NodeOptions(), robot_);
   executor_ = std::make_shared<FrankaExecutor>();
   executor_->add_node(service_node_);
