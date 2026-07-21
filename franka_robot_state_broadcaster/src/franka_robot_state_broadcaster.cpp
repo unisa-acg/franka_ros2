@@ -48,31 +48,10 @@ FrankaRobotStateBroadcaster::~FrankaRobotStateBroadcaster() {
   }
 }
 
-// Override trylock to customize the locking mechanism
-// You are excused for wondering why this is necessary.
-// RealtimePublisher::trylock() failure is highly likely due to the 1kHz publish rate.
-// Here we force the scheduler to yield our thread, rescheduling in [sleep_time_] microseconds.
-// After [try_count_] attempts, we give up. Failure to ever gain Lock results in an error message.
-// Hopefully, the next call to update() will be successful.
-bool FrankaRobotStateBroadcaster::FrankaRobotStateRealtimePublisher::trylock() {
-  int count{0};
-  while (++count <= try_count_ &&
-         !realtime_tools::RealtimePublisher<franka_msgs::msg::FrankaRobotState>::trylock()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(sleep_time_));
-  }
-  return count <= try_count_;
-}
-
 controller_interface::CallbackReturn FrankaRobotStateBroadcaster::on_init() {
   try {
     param_listener = std::make_shared<ParamListener>(get_node());
     params = param_listener->get_params();
-
-    auto_declare<int>(kLockTryCount, kLock_try_count);
-    auto_declare<int>(kLockSleepInterval, kLock_sleep_interval);
-    auto_declare<bool>(kLockLogError, kLock_log_error);
-    auto_declare<bool>(kLockUpdateSuccess, kLock_update_success);
-
   } catch (const std::exception& e) {
     fprintf(stderr, "Exception thrown during init stage with message: %s \n", e.what());
     return CallbackReturn::ERROR;
@@ -136,21 +115,9 @@ controller_interface::CallbackReturn FrankaRobotStateBroadcaster::on_configure(
     franka_state_publisher = this_node->create_publisher<franka_msgs::msg::FrankaRobotState>(
         "~/" + state_interface_name, rclcpp::SystemDefaultsQoS());
 
-    lock_log_error_ = this_node->get_parameter(kLockLogError).as_bool();
-    lock_update_success_ = this_node->get_parameter(kLockUpdateSuccess).as_bool();
-
-    int try_count = this_node->get_parameter(kLockTryCount).as_int();
-    int sleep_time = this_node->get_parameter(kLockSleepInterval).as_int();
-
-    if (try_count < 0 || sleep_time < 0) {
-      RCLCPP_ERROR(this_node->get_logger(),
-                   "lock_try_count AND lock_sleep_interval must be greater than 0");
-      return CallbackReturn::ERROR;
-    }
-
     realtime_franka_state_publisher =
-        std::make_shared<FrankaRobotStateBroadcaster::FrankaRobotStateRealtimePublisher>(
-            franka_state_publisher, try_count, sleep_time);
+        std::make_shared<realtime_tools::RealtimePublisher<franka_msgs::msg::FrankaRobotState>>(
+            franka_state_publisher);
     franka_robot_state_->initialize_robot_state_msg(realtime_franka_state_publisher->msg_);
   } catch (const std::exception& e) {
     fprintf(stderr,
@@ -178,18 +145,12 @@ controller_interface::CallbackReturn FrankaRobotStateBroadcaster::on_deactivate(
 controller_interface::return_type FrankaRobotStateBroadcaster::update(
     const rclcpp::Time& time,
     const rclcpp::Duration& /*period*/) {
-  if (!realtime_franka_state_publisher->trylock()) {
-    if (lock_log_error_) {
-      RCLCPP_ERROR(get_node()->get_logger(),
-                   "Failed to lock the realtime publisher after %d attempts",
-                   realtime_franka_state_publisher->try_count());
-    }
-
-    return lock_update_success_ ? controller_interface::return_type::OK
-                                : controller_interface::return_type::ERROR;
-  }
-
-  {
+  // Single non-blocking attempt. If the non-realtime publisher thread is still handling the
+  // previous message (turn_ != REALTIME), trylock() returns false and we simply skip this cycle.
+  // The realtime_tools publisher is event-driven (condition-variable based), so the next update()
+  // publishes as soon as the thread hands msg_ back -- no polling/sleeping inside the RT loop, and
+  // a transient miss must never be reported as an error (that would deactivate the controller).
+  if (realtime_franka_state_publisher->trylock()) {
     std::unique_lock<std::mutex> lock(publish_mutex_);
     realtime_franka_state_publisher->msg_.header.stamp = time;
 
@@ -200,11 +161,11 @@ controller_interface::return_type FrankaRobotStateBroadcaster::update(
       return controller_interface::return_type::ERROR;
     }
     realtime_franka_state_publisher->unlockAndPublish();
-  }
 
-  // This block is not real-time safe due to jitter introduced by the ROS 2 publisher.
-  publish_now_ = true;
-  condition_variable_publish_next_.notify_all();
+    // This block is not real-time safe due to jitter introduced by the ROS 2 publisher.
+    publish_now_ = true;
+    condition_variable_publish_next_.notify_all();
+  }
 
   return controller_interface::return_type::OK;
 }
