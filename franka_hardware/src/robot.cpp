@@ -21,6 +21,7 @@
 #include <rclcpp/logging.hpp>
 
 #include "franka_hardware/robot.hpp"
+#include "tp.h"
 
 namespace franka_hardware {
 
@@ -48,12 +49,14 @@ Robot::~Robot() {
 }
 
 franka::RobotState Robot::readOnce() {
+  tracepoint(franka_timing, read_entry);
   std::lock_guard<std::mutex> lock(control_mutex_);
   if (!active_control_) {
     current_state_ = robot_->readOnce();
   } else {
     current_state_ = readOnceActiveControl();
   }
+  tracepoint(franka_timing, read_exit, current_state_.time.toMSec());
   return current_state_;
 }
 
@@ -80,6 +83,7 @@ void Robot::writeOnce(const std::array<double, 7>& joint_commands) {
   if (!active_control_) {
     throw std::runtime_error("Control hasn't been started");
   }
+  tracepoint(franka_timing, write_entry);
   if (effort_interface_active_) {
     writeOnceEfforts(joint_commands);
   } else if (joint_velocity_interface_active_) {
@@ -87,6 +91,7 @@ void Robot::writeOnce(const std::array<double, 7>& joint_commands) {
   } else if (joint_position_interface_active_) {
     writeOnceJointPositions(joint_commands);
   }
+  tracepoint(franka_timing, write_exit);
 }
 
 void Robot::writeOnceEfforts(const std::array<double, 7>& efforts) {
@@ -201,9 +206,11 @@ void Robot::writeOnce(const std::array<double, 6>& cartesian_velocities) {
 
   std::lock_guard<std::mutex> lock(control_mutex_);
 
+  tracepoint(franka_timing, write_entry);
   auto velocity_command = franka::CartesianVelocities(cartesian_velocities);
   auto filtered_velocity_command = preProcessCartesianVelocities(velocity_command);
   active_control_->writeOnce(filtered_velocity_command);
+  tracepoint(franka_timing, write_exit);
 }
 
 void Robot::writeOnce(const std::array<double, 6>& cartesian_velocities,
@@ -214,10 +221,12 @@ void Robot::writeOnce(const std::array<double, 6>& cartesian_velocities,
 
   std::lock_guard<std::mutex> lock(control_mutex_);
 
+  tracepoint(franka_timing, write_entry);
   auto velocity_command = franka::CartesianVelocities(cartesian_velocities, elbow_command);
   auto filtered_velocity_command = preProcessCartesianVelocities(velocity_command);
 
   active_control_->writeOnce(filtered_velocity_command);
+  tracepoint(franka_timing, write_exit);
 }
 
 void Robot::writeOnce(const std::array<double, 16>& cartesian_pose) {
@@ -227,10 +236,12 @@ void Robot::writeOnce(const std::array<double, 16>& cartesian_pose) {
 
   std::lock_guard<std::mutex> lock(control_mutex_);
 
+  tracepoint(franka_timing, write_entry);
   auto pose_command = franka::CartesianPose(cartesian_pose);
   auto filtered_pose = preProcessCartesianPose(pose_command);
 
   active_control_->writeOnce(filtered_pose);
+  tracepoint(franka_timing, write_exit);
 }
 
 void Robot::writeOnce(const std::array<double, 16>& cartesian_pose,
@@ -241,11 +252,13 @@ void Robot::writeOnce(const std::array<double, 16>& cartesian_pose,
 
   std::lock_guard<std::mutex> lock(control_mutex_);
 
+  tracepoint(franka_timing, write_entry);
   auto pose_command = franka::CartesianPose(cartesian_pose, elbow_command);
 
   auto filtered_pose = preProcessCartesianPose(pose_command);
 
   active_control_->writeOnce(filtered_pose);
+  tracepoint(franka_timing, write_exit);
 }
 
 franka::RobotState Robot::readOnceActiveControl() {
