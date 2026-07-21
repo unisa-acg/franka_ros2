@@ -37,9 +37,10 @@ bool getBoolHardwareParameter(const hardware_interface::HardwareInfo& info,
 }
 }  // namespace
 
-CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::HardwareComponentInterfaceParams & params) {
+CallbackReturn FrankaAsyncHardwareInterface::on_init(
+    const hardware_interface::HardwareComponentInterfaceParams& params) {
   CallbackReturn return_value = this->FrankaHardwareInterface::on_init(params);
-  
+
   if (return_value != CallbackReturn::SUCCESS) {
     return return_value;
   }
@@ -48,14 +49,14 @@ CallbackReturn FrankaAsyncHardwareInterface::on_init(const hardware_interface::H
     return CallbackReturn::ERROR;
   }
 
-  bool filter_commands = getBoolHardwareParameter(info, "filter_commands", false);
+  bool filter_commands = getBoolHardwareParameter(info_, "filter_commands", false);
 
   bool joint_position_rate_limit =
-      getBoolHardwareParameter(info, "joint_position_rate_limit", true);
+      getBoolHardwareParameter(info_, "joint_position_rate_limit", true);
   robot_->setJointPositionCommandRateLimitActive(joint_position_rate_limit);
 
   bool joint_position_low_pass_filter =
-      getBoolHardwareParameter(info, "joint_position_low_pass_filter", false);
+      getBoolHardwareParameter(info_, "joint_position_low_pass_filter", false);
   robot_->setJointPositionCommandLowPassFilterActive(joint_position_low_pass_filter);
 
   // Initialize the robot communication thread
