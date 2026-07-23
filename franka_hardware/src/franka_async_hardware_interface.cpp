@@ -35,6 +35,16 @@ bool getBoolHardwareParameter(const hardware_interface::HardwareInfo& info,
   std::transform(value_lower.begin(), value_lower.end(), value_lower.begin(), ::tolower);
   return value_lower == "true";
 }
+double getDoubleHardwareParameter(const hardware_interface::HardwareInfo& info,
+                                  const std::string& parameter_name,
+                                  double default_value) {
+  auto param_value = info.hardware_parameters.find(parameter_name);
+  if (param_value == info.hardware_parameters.end()) {
+    return default_value;
+  }
+  std::string value_lower = param_value->second;
+  return std::stod(value_lower);
+}
 }  // namespace
 
 CallbackReturn FrankaAsyncHardwareInterface::on_init(
@@ -60,7 +70,8 @@ CallbackReturn FrankaAsyncHardwareInterface::on_init(
   robot_->setJointPositionCommandLowPassFilterActive(joint_position_low_pass_filter);
 
   // Initialize the robot communication thread
-  robot_communication_thread_ = std::make_shared<RobotCommunicationThread>(robot_);
+  double lambda = getDoubleHardwareParameter(info_, "lambda", 1e-3);
+  robot_communication_thread_ = std::make_shared<RobotCommunicationThread>(robot_, lambda);
 
   // Set the filter commands flag
   robot_communication_thread_->set_filter_commands(filter_commands);
