@@ -150,6 +150,16 @@ void initializeCommand(bool& first_update,
 }
 
 void FrankaHardwareInterface::initializePositionCommands(const franka::RobotState& robot_state) {
+  std::ostringstream s;
+  s << "Initializing position commands" << std::endl;
+  s << "  First position update? " << first_position_update_ << std::endl;
+  s << "  Position joint interface running? " << position_joint_interface_running_ << std::endl;
+  s << "  robot_state.q_d: [ ";
+  for (std::size_t i = 0; i < robot_state.q_d.size(); ++i) {
+    s << robot_state.q_d[i] << " ";
+  }
+  s << "]" << std::endl;
+  RCLCPP_DEBUG_STREAM(getLogger(), "Initializing position commands" << s.str());
   initializeCommand(first_position_update_, position_joint_interface_running_,
                     hw_position_commands_, robot_state.q_d);
   initializeCommand(first_cartesian_pose_update_, pose_cartesian_interface_running_,
@@ -182,10 +192,30 @@ hardware_interface::return_type FrankaHardwareInterface::read(const rclcpp::Time
 
 hardware_interface::return_type FrankaHardwareInterface::write(const rclcpp::Time& /*time*/,
                                                                const rclcpp::Duration& /*period*/) {
-  if (hasInfinite(hw_position_commands_) || hasInfinite(hw_effort_commands_) ||
-      hasInfinite(hw_velocity_commands_) || hasInfinite(hw_cartesian_velocities_) ||
-      hasInfinite(hw_elbow_command_) || hasInfinite(hw_cartesian_pose_)) {
-    return hardware_interface::return_type::ERROR;
+  if ((effort_interface_running_ && hasInfinite(hw_effort_commands_)) ||
+      (velocity_joint_interface_running_ && hasInfinite(hw_velocity_commands_)) ||
+      (position_joint_interface_running_ && hasInfinite(hw_position_commands_)) ||
+      (velocity_cartesian_interface_running_ && hasInfinite(hw_cartesian_velocities_)) ||
+      (pose_cartesian_interface_running_ && hasInfinite(hw_cartesian_pose_)) ||
+      (elbow_command_interface_running_ && hasInfinite(hw_elbow_command_))) {
+    std::ostringstream s;
+    s << "Infinite command or state!" << std::endl;
+    s << " position commands? " << hasInfinite(hw_position_commands_)
+      << " position joint interface running? " << position_joint_interface_running_ << std::endl;
+    s << " effort commands? " << hasInfinite(hw_effort_commands_) << " effort interface running? "
+      << effort_interface_running_ << std::endl;
+    s << " velocity commands? " << hasInfinite(hw_velocity_commands_)
+      << " velocity joint interface running? " << velocity_joint_interface_running_ << std::endl;
+    s << " cartesian velocities? " << hasInfinite(hw_cartesian_velocities_)
+      << " velocity cartesian interface running? " << velocity_cartesian_interface_running_
+      << std::endl;
+    s << " elbow command? " << hasInfinite(hw_elbow_command_) << " elbow interface running? "
+      << elbow_command_interface_running_ << std::endl;
+    s << " cartesian pose? " << hasInfinite(hw_cartesian_pose_)
+      << " pose cartesian interface running? " << pose_cartesian_interface_running_ << std::endl;
+    s << "Will not write." << std::endl;
+    RCLCPP_ERROR_STREAM(getLogger(), "" << s.str());
+    return hardware_interface::return_type::OK;
   }
 
   if (velocity_joint_interface_running_) {
