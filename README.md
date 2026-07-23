@@ -6,7 +6,8 @@ See the [Franka Control Interface (FCI) documentation][fci-docs] for more inform
 
 ## Tracing FCI loop timing (LTTng-UST)
 
-`franka_hardware`'s `Robot::readOnce`/`Robot::writeOnce` wrappers are instrumented with the `franka_timing` LTTng-UST tracepoint. Tracing needs `liblttng-ust-dev` (2.13.x) and is built by default; pass `-DWITH_LTTNG=OFF` to disable it.
+`franka_hardware`'s `Robot::readOnce`/`Robot::writeOnce` wrappers are instrumented with the `franka_timing` LTTng-UST tracepoint.
+Tracing needs `liblttng-ust-dev` (2.13.x) and is built by default; pass `-DWITH_LTTNG=OFF` to disable it.
 
 Capture workflow:
 
@@ -14,7 +15,7 @@ Capture workflow:
 lttng create franka-timing
 lttng enable-event -u 'franka_timing:*'
 lttng start
-ros2 launch franka_bringup franka.launch.py robot_ip:=<robot-ip>
+ros2 launch franka_bringup franka.launch.py arm_id:= fer robot_ip:=<robot-ip> load_gripper:={false|true}
 lttng stop
 lttng destroy
 ```
