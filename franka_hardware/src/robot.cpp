@@ -58,6 +58,7 @@ franka::RobotState Robot::readOnce() {
 }
 
 void Robot::stopRobot() {
+  std::lock_guard<std::mutex> lock(control_mutex_);
   if (active_control_) {
     effort_interface_active_ = false;
     joint_velocity_interface_active_ = false;
@@ -259,6 +260,7 @@ franka_hardware::Model* Robot::getModel() {
 }
 
 void Robot::initializeTorqueInterface() {
+  std::lock_guard<std::mutex> lock(control_mutex_);
   try {
     active_control_ = robot_->startTorqueControl();
   } catch (const franka::ControlException& e) {
@@ -269,6 +271,7 @@ void Robot::initializeTorqueInterface() {
 }
 
 void Robot::initializeJointVelocityInterface() {
+  std::lock_guard<std::mutex> lock(control_mutex_);
   try {
     active_control_ = robot_->startJointVelocityControl(
         research_interface::robot::Move::ControllerMode::kJointImpedance);
@@ -282,6 +285,7 @@ void Robot::initializeJointVelocityInterface() {
 }
 
 void Robot::initializeJointPositionInterface() {
+  std::lock_guard<std::mutex> lock(control_mutex_);
   try {
     active_control_ = robot_->startJointPositionControl(
         research_interface::robot::Move::ControllerMode::kJointImpedance);
@@ -295,6 +299,7 @@ void Robot::initializeJointPositionInterface() {
 }
 
 void Robot::initializeCartesianVelocityInterface() {
+  std::lock_guard<std::mutex> lock(control_mutex_);
   try {
     active_control_ = robot_->startCartesianVelocityControl(
         research_interface::robot::Move::ControllerMode::kJointImpedance);
@@ -307,6 +312,7 @@ void Robot::initializeCartesianVelocityInterface() {
 }
 
 void Robot::initializeCartesianPoseInterface() {
+  std::lock_guard<std::mutex> lock(control_mutex_);
   try {
     active_control_ = robot_->startCartesianPoseControl(
         research_interface::robot::Move::ControllerMode::kJointImpedance);
