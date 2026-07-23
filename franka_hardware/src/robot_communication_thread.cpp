@@ -15,10 +15,11 @@
 
 namespace franka_hardware {
 
-RobotCommunicationThread::RobotCommunicationThread(std::shared_ptr<Robot> robot)
+RobotCommunicationThread::RobotCommunicationThread(std::shared_ptr<Robot> robot, double lambda)
     : std::thread(&RobotCommunicationThread::run, this),
       robot_(robot),
-      logger_(rclcpp::get_logger("RobotCommunicationThread")) {
+      logger_(rclcpp::get_logger("RobotCommunicationThread")),
+      lambda_(lambda) {
   iir_filters_.reserve(N_JOINTS);
   for (int i = 0; i < N_JOINTS; ++i) {
     iir_filters_.emplace_back(
@@ -162,8 +163,8 @@ void RobotCommunicationThread::write() {
     std::array<double, N_JOINTS> joint_position_command;
     for (size_t i = 0; i < N_JOINTS; ++i) {
       joint_position_command[i] =
-          current_robot_state_.q_d[i] + async_hw_velocity_commands_[i] * 0.001 +
-          (async_hw_position_commands_[i] - current_robot_state_.q_d[i]) * 1e-3;
+          current_robot_state_.q_d[i] + async_hw_velocity_commands_[i] * DT +
+          (async_hw_position_commands_[i] - current_robot_state_.q_d[i]) * lambda_;
     }
     robot_->writeOnce(joint_position_command);
   } else if (should_write_cartesian_pose_commands) {
@@ -178,7 +179,7 @@ void RobotCommunicationThread::write() {
 
     // Apply the desired twist to the reference pose
     Eigen::Matrix<double, 4, 4, Eigen::ColMajor> delta_pose;
-    calculate_delta_pose(desired_cartesian_twist, 0.001, delta_pose);
+    calculate_delta_pose(desired_cartesian_twist, DT, delta_pose);
     cartesian_pose_reference *= delta_pose;
 
     // Calculate the twist between the desired and current poses

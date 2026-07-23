@@ -27,8 +27,8 @@
 
 #include <rclcpp/logger.hpp>
 
-#include "franka_hardware/robot.hpp"
 #include "franka_hardware/iir_filter.hpp"
+#include "franka_hardware/robot.hpp"
 
 namespace franka_hardware {
 
@@ -49,19 +49,21 @@ class RobotCommunicationThread : public std::thread {
   static constexpr int DIM_CARTESIAN_POSE = 16;
   static constexpr int DIM_CARTESIAN_VELOCITIES = 6;
   static constexpr int DIM_ELBOW_COMMANDS = 2;
+  static constexpr double DT = 0.001;  // [s], fixed by FCI
 
-  RobotCommunicationThread(std::shared_ptr<Robot> robot);
+  RobotCommunicationThread(std::shared_ptr<Robot> robot, double lambda = 1e-3);
 
   franka_hardware::Model* get_model();
 
   void get_current_robot_state(franka::RobotState& robot_state,
                                RobotCommandMode& robot_command_mode);
-  void write_commands(const std::array<double, N_JOINTS>& joint_effort_commands,
-                      const std::array<double, N_JOINTS>& joint_position_commands,
-                      const std::array<double, N_JOINTS>& joint_velocity_commands,
-                      const std::array<double, DIM_CARTESIAN_POSE>& cartesian_pose_commands,
-                      const std::array<double, DIM_CARTESIAN_VELOCITIES>& cartesian_velocity_commands,
-                      const std::array<double, DIM_ELBOW_COMMANDS>& elbow_command);
+  void write_commands(
+      const std::array<double, N_JOINTS>& joint_effort_commands,
+      const std::array<double, N_JOINTS>& joint_position_commands,
+      const std::array<double, N_JOINTS>& joint_velocity_commands,
+      const std::array<double, DIM_CARTESIAN_POSE>& cartesian_pose_commands,
+      const std::array<double, DIM_CARTESIAN_VELOCITIES>& cartesian_velocity_commands,
+      const std::array<double, DIM_ELBOW_COMMANDS>& elbow_command);
   void request_command_mode_switch(RobotCommandMode robot_command_mode);
   void enable();
   void disable();
@@ -93,7 +95,7 @@ class RobotCommunicationThread : public std::thread {
   // Cartesian commands
   std::array<double, DIM_CARTESIAN_VELOCITIES> async_hw_cartesian_velocities_{0, 0, 0, 0, 0, 0};
   std::array<double, DIM_CARTESIAN_POSE> async_hw_cartesian_pose_{1, 0, 0, 0, 0, 1, 0, 0,
-                                                                        0, 0, 1, 0, 0, 0, 0, 1};
+                                                                  0, 0, 1, 0, 0, 0, 0, 1};
   std::array<double, DIM_ELBOW_COMMANDS> async_hw_elbow_command_{0, 0};
 
   // Module enabled
@@ -118,9 +120,10 @@ class RobotCommunicationThread : public std::thread {
   std::shared_ptr<Robot> robot_;
   const rclcpp::Logger logger_;
 
-  static constexpr double communication_period_error_tolerance_ = 25e-5; //0.25 ms
+  static constexpr double communication_period_error_tolerance_ = 25e-5;  // 0.25 ms
 
   std::vector<acg_signal_processing::IIRFilter<7, 0>> iir_filters_;
+  double lambda_{1e-3};
 
   bool should_filter_ = false;
 };
