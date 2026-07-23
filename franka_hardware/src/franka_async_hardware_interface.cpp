@@ -56,7 +56,7 @@ CallbackReturn FrankaAsyncHardwareInterface::on_init(
   robot_->setJointPositionCommandRateLimitActive(joint_position_rate_limit);
 
   bool joint_position_low_pass_filter =
-      getBoolHardwareParameter(info_, "joint_position_low_pass_filter", false);
+      getBoolHardwareParameter(info_, "joint_position_low_pass_filter", true);
   robot_->setJointPositionCommandLowPassFilterActive(joint_position_low_pass_filter);
 
   // Initialize the robot communication thread
