@@ -1,6 +1,3 @@
-#ifndef FRANKA_TRACING_TP_H
-#define FRANKA_TRACING_TP_H
-
 #ifdef FRANKA_WITH_LTTNG_UST
 
 #undef TRACEPOINT_PROVIDER
@@ -9,11 +6,15 @@
 #undef TRACEPOINT_INCLUDE
 #define TRACEPOINT_INCLUDE "./tp.h"
 
-#if !defined(FRANKA_TRACING_TP_H_LTTNG) || defined(TRACEPOINT_HEADER_MULTI_READ)
-#define FRANKA_TRACING_TP_H_LTTNG
+/*
+ * This must be the only include guard for the enabled provider.
+ * LTTng deliberately re-includes this file with
+ * TRACEPOINT_HEADER_MULTI_READ defined.
+ */
+#if !defined(FRANKA_TRACING_TP_H) || defined(TRACEPOINT_HEADER_MULTI_READ)
+#define FRANKA_TRACING_TP_H
 
 #include <stdint.h>
-
 #include <lttng/tracepoint.h>
 
 TRACEPOINT_EVENT(
@@ -46,11 +47,17 @@ TRACEPOINT_EVENT(
     TP_FIELDS()
 )
 
-#endif  // FRANKA_TRACING_TP_H_LTTNG
+#endif /* FRANKA_TRACING_TP_H */
 
+/*
+ * Must remain outside the multi-read include guard.
+ */
 #include <lttng/tracepoint-event.h>
 
-#else  // !FRANKA_WITH_LTTNG_UST
+#else /* !FRANKA_WITH_LTTNG_UST */
+
+#ifndef FRANKA_TRACING_TP_DISABLED_H
+#define FRANKA_TRACING_TP_DISABLED_H
 
 #ifndef tracepoint
 #define tracepoint(...) \
@@ -58,6 +65,6 @@ TRACEPOINT_EVENT(
   } while (0)
 #endif
 
-#endif  // FRANKA_WITH_LTTNG_UST
+#endif /* FRANKA_TRACING_TP_DISABLED_H */
 
-#endif  // FRANKA_TRACING_TP_H
+#endif /* FRANKA_WITH_LTTNG_UST */
