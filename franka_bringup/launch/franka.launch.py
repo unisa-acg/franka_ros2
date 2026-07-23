@@ -38,7 +38,11 @@ def robot_description_dependent_nodes_spawner(
         arm_id,
         use_fake_hardware,
         fake_sensor_commands,
-        load_gripper):
+        load_gripper,
+        async_interface,
+        filter_commands,
+        joint_position_rate_limit,
+        joint_position_low_pass_filter):
 
     robot_ip_str = context.perform_substitution(robot_ip)
     arm_id_str = context.perform_substitution(arm_id)
@@ -46,6 +50,11 @@ def robot_description_dependent_nodes_spawner(
     fake_sensor_commands_str = context.perform_substitution(
         fake_sensor_commands)
     load_gripper_str = context.perform_substitution(load_gripper)
+    async_interface_str = context.perform_substitution(async_interface)
+    filter_commands_str = context.perform_substitution(filter_commands)
+    joint_position_rate_limit_str = context.perform_substitution(joint_position_rate_limit)
+    joint_position_low_pass_filter_str = context.perform_substitution(joint_position_low_pass_filter)    
+    print(joint_position_low_pass_filter_str)
 
     franka_xacro_filepath = os.path.join(get_package_share_directory(
         'franka_description'), 'robots', arm_id_str, arm_id_str+'.urdf.xacro')
@@ -57,7 +66,12 @@ def robot_description_dependent_nodes_spawner(
                                                'hand': load_gripper_str,
                                                'use_fake_hardware': use_fake_hardware_str,
                                                'fake_sensor_commands': fake_sensor_commands_str,
+                                               'async_interface': async_interface_str,
+                                               'filter_commands': filter_commands_str,
+                                               'joint_position_rate_limit': joint_position_rate_limit_str,
+                                               'joint_position_low_pass_filter': joint_position_low_pass_filter_str,
                                            }).toprettyxml(indent='  ')
+    print(robot_description)
 
     controller_file_package = LaunchConfiguration('controller_file_package')
     controller_file_path = LaunchConfiguration('controller_file_path')
@@ -124,10 +138,18 @@ def generate_launch_description():
     use_fake_hardware_parameter_name = 'use_fake_hardware'
     fake_sensor_commands_parameter_name = 'fake_sensor_commands'
     use_rviz_parameter_name = 'use_rviz'
+    async_interface_parameter_name = 'async_interface'
+    filter_commands_parameter_name = 'filter_commands'
+    joint_position_rate_limit_parameter_name = 'joint_position_rate_limit'
+    joint_position_low_pass_filter_parameter_name = 'joint_position_low_pass_filter'
 
     arm_id = LaunchConfiguration(arm_id_parameter_name)
     robot_ip = LaunchConfiguration(robot_ip_parameter_name)
     load_gripper = LaunchConfiguration(load_gripper_parameter_name)
+    async_interface = LaunchConfiguration(async_interface_parameter_name)
+    filter_commands = LaunchConfiguration(filter_commands_parameter_name)
+    joint_position_rate_limit = LaunchConfiguration(joint_position_rate_limit_parameter_name)
+    joint_position_low_pass_filter = LaunchConfiguration(joint_position_low_pass_filter_parameter_name)    
     use_fake_hardware = LaunchConfiguration(use_fake_hardware_parameter_name)
     fake_sensor_commands = LaunchConfiguration(
         fake_sensor_commands_parameter_name)
@@ -143,7 +165,11 @@ def generate_launch_description():
             arm_id,
             use_fake_hardware,
             fake_sensor_commands,
-            load_gripper])
+            load_gripper,
+            async_interface,
+            filter_commands,
+            joint_position_rate_limit,
+            joint_position_low_pass_filter])
 
     launch_description = LaunchDescription([
         DeclareLaunchArgument(
@@ -170,6 +196,22 @@ def generate_launch_description():
             default_value='true',
             description='Use Franka Gripper as an end-effector, otherwise, the robot is loaded '
                         'without an end-effector.'),
+        DeclareLaunchArgument(
+            async_interface_parameter_name,
+            default_value='true',
+            description='Use an async hardware interface?'),
+        DeclareLaunchArgument(
+            filter_commands_parameter_name,
+            default_value='false',
+            description='Filter position commands?'),
+        DeclareLaunchArgument(
+            joint_position_rate_limit_parameter_name,
+            default_value='true',
+            description='Use rate limiter on position commands?'),
+        DeclareLaunchArgument(
+            joint_position_low_pass_filter_parameter_name,
+            default_value='true',
+            description='Use a low pass filter on position commands?'),
         DeclareLaunchArgument(
             'controller_file_package',
             default_value='franka_bringup',
